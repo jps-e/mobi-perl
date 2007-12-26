@@ -1,0 +1,287 @@
+#!/usr/bin/env perl
+
+#    Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    mobi2html, Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+use HTML::TreeBuilder;
+use Palm::PDB;
+use Palm::Doc;
+use Image::Size;
+use Date::Parse;
+use Date::Format;
+use Getopt::Mixed;
+
+use strict;
+
+use vars qw ($opt_rawhtml $opt_record0 $opt_saveallrecords);
+
+Getopt::Mixed::getOptions ("rawhtml record0 saveallrecords");
+
+my $filename = shift;
+my $explodedir = shift;
+
+die "A directory to exlode the mobi file must be specified as second argument"
+    unless defined $explodedir;
+
+die "File does not exist: $filename" unless -e $filename;
+
+mkdir $explodedir;
+
+my $pdb = new Palm::PDB;
+$pdb->Load($filename);
+
+my $name = $pdb->{"name"};
+my $version = $pdb->{"version"};
+my $type = $pdb->{"type"};
+my $creator = $pdb->{"creator"};
+my $seed = $pdb->{"uniqueIDseed"};
+my $ctime = $pdb->{"ctime"};
+my $mtime = $pdb->{"mtime"};
+my $sctime = ctime ($ctime);
+my $smtime = ctime ($mtime);
+
+print STDERR "Name: $name\n";
+print STDERR "Version: $version\n";
+print STDERR "Type: $type\n";
+print STDERR "Creator: $creator\n";
+print STDERR "Seed: $seed\n";
+print STDERR "Resdb: " . $pdb->{"attributes"}{"ResDB"} . "\n";
+print STDERR "AppInfoDirty: " . $pdb->{"attributes"}{"AppInfoDirty"} . "\n";
+print STDERR "ctime: $ctime - $sctime\n";
+print STDERR "mtime: $mtime - $smtime\n";
+print STDERR "baktime: " . $pdb->{"baktime"} . "\n";
+
+my @records = @{$pdb->{"records"}};
+print STDERR "Number of record: " . $#records . "\n";
+
+
+my $image_index = 0;
+my %image_index_to_filename = ();
+
+foreach my $r (@records) {
+	my $id = $r->{"id"};
+	my $cat = $r->{"category"};
+	my $offset = $r->{"offset"};
+	my $data = $r->{"data"};
+	my $size = length ($data);
+	my $filename = "record-$id";
+	my ($x, $y) = imgsize(\$data);
+	if (defined $x) {
+	    print STDERR "Record $id - $cat - $offset - $size - $x x $ y\n";
+	    $image_index++;
+	    $image_index_to_filename{$image_index} = $filename;
+	    open DATA, ">$explodedir/$filename";
+	    print DATA $data;
+	    close DATA;
+#	    print STDERR "SIZE: $x $y\n";
+	} else {
+	    if (defined $opt_record0 or defined $opt_saveallrecords) {
+		open DATA, ">$filename";
+		print DATA $data;
+		close DATA;
+	    }
+	}
+	if (defined $opt_record0) {
+	    exit (0);
+	}
+	if ($id == 0) {
+	    parse_record_0 ($data);
+	}
+}
+
+#my @resources = @{$pdb->{"resources"}};
+#print STDERR "Number of resources: " . $#resources . "\n";
+
+my $text = $pdb->text;
+
+if (defined $opt_rawhtml) {
+    print $text;
+}
+
+my %fileposmap;
+
+print STDERR "Looking for filepos\n";
+my $cp = 0;
+my $len = length ($text);
+while ($cp < $len) {
+    my $s = substr ($text, $cp, 50);
+    if (substr ($s, 0, 7) eq "filepos") {
+	if ($s =~ /^filepos=(\d+)/) {
+	    print STDERR "FILEPOS: $cp - $1\n";
+	    $fileposmap{$1} = 1;
+	}
+    }
+    $cp++;
+}
+print STDERR "Found all filepos\n";
+
+my $offset = 0;
+foreach my $pos (sort keys %fileposmap) {
+    print STDERR "NAMEPOS: $pos\n";
+    my $a = substr ($text, $pos+$offset, 2);
+    if ($a eq "<a") {
+	substr ($text, $pos+$offset, 2, "<a name=\"" . $pos . "\"");
+	$offset += (8 + length ($pos));
+    } else {
+	print STDERR "WARNING: Not an anchor: $a\n";
+    }
+}
+
+
+my $tree = new HTML::TreeBuilder ();
+$tree->ignore_unknown (0);
+$tree->parse ($text);
+$tree->eof ();
+
+#my $tree = HTML::TreeBuilder->new_from_content ($text);
+
+fix_filepos_attributes ($tree);
+fix_image_tags ($tree);
+
+my $htmlfile = $filename;
+$htmlfile =~ s/\.mobi/.html/;
+$htmlfile =~ s/\.prc/.html/;
+$htmlfile =~ s/\.pdb/.html/;
+open HTML, ">$explodedir/$htmlfile" or die "Could not open file $explodedir/$htmlfile";
+print HTML $tree->as_HTML;
+close HTML;
+
+
+sub fix_image_tags {
+    my $tree = shift;
+    my @imgel = $tree->find ("img");
+    foreach my $img (@imgel) {
+	my $recindex = $img->attr ("recindex");
+	my $ind = int ($recindex);
+	my $filename = $image_index_to_filename{$ind};
+	print STDERR "FIX IMAGE TAGS: $recindex - $ind - $filename\n";
+	$img->attr ("recindex", undef);
+	$img->attr ("src", $filename);
+    }
+}
+
+sub fix_filepos_attributes {
+    my $tree = shift;
+    my @ael = $tree->find ("a");
+    foreach my $a (@ael) {
+	my $filepos = $a->attr ("filepos");
+	if ($filepos) {
+	    $a->attr ("href", "\#$filepos");
+	    print STDERR "FIX FILEPOS ATTR: $filepos\n";
+	}
+    }
+}
+
+sub parse_record_0 {
+    my $rec = shift;
+    my $palmdocheader = substr ($rec, 0, 16);
+    parse_palmdoc_header ($palmdocheader);
+    if ($type eq "BOOK" and $creator eq "MOBI") {
+	my $mobiheader = substr ($rec, 16);
+	parse_mobi_header ($mobiheader);
+    }
+}
+
+sub parse_palmdoc_header {
+    my $data = shift;
+    my ($version, $length, $nrecords, $recsize, $unknown) =
+	unpack ("nxxNnnN", $data);
+    print STDERR "PDHEADER  Version: $version\n";
+    print STDERR "PDHEADER   Length: $length\n";
+    print STDERR "PDHEADER NRecords: $nrecords\n";
+    print STDERR "PDHEADER  Recsize: $recsize\n";
+    print STDERR "PDHEADER  Unknown: $unknown\n";
+}
+
+sub parse_mobi_header {
+    my $data = shift;
+    my ($doctype, $length, $type, $codepage, $uniqueid, $ver) =
+	unpack ("a4NNNNN", $data);
+    my ($exthflg) = unpack ("N", substr ($data, 0x70));
+    print STDERR "MOBIHEADER doctype: $doctype\n";
+    print STDERR "MOBIHEADER  length: $length\n";
+    print STDERR "MOBIHEADER    type: $type\n";
+    print STDERR "MOBIHEADER   codep: $codepage\n";
+    print STDERR "MOBIHEADER  uniqid: $uniqueid\n";
+    print STDERR "MOBIHEADER     ver: $ver\n";
+    print STDERR "MOBIHEADER exthflg: $exthflg\n";
+
+    if ($exthflg & 0x40) {
+	my $exth = substr ($data, $length);
+	parse_mobi_exth ($exth);
+    }
+}
+
+sub parse_mobi_exth {
+    my $data = shift;
+    my ($doctype, $len, $n_items) = unpack ("a4NN", $data);
+    print STDERR "EXTH doctype: $doctype\n";
+    print STDERR "EXTH  length: $len\n";
+    print STDERR "EXTH n_items: $n_items\n";
+    my $pos = 12;
+    foreach (1..$n_items) {
+	my ($id, $size) = unpack ("NN", substr ($data, $pos));
+	my $contlen = $size-8;
+	my ($id, $size, $content) = unpack ("NNa$contlen", substr ($data, $pos));
+	my $hid = sprintf ("%x", $id);
+	my $hsize = sprintf ("%x", $size);
+	print STDERR "ITEM: $hid $hsize - $id $size - $content\n";
+	$pos += $size;
+    }
+}
+
+=pod
+
+=head1 NAME
+
+mobi2html - A script to explode a DRM-free MobiPocket file to html
+
+=head1 SYNOPSIS
+
+mobi2html file.mobi unpackdir
+
+=head1 DESCRIPTION
+
+A script to explode a DRM-free MobiPocket file to html.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--rawhtml>
+
+Output the unmodified HTML code on STDOUT. Mostly useful for debugging.
+
+
+=back
+
+=head1 EXAMPLES
+
+   mobi2html "Bleak House.prc" unpack
+
+   mobi2html "Bleak House.prc" unpack --rawhtml > t.html
+
+=head1 AUTHOR
+
+Tommy Persson (tpe@ida.liu.se)
+
+=cut
+
+
+
+
