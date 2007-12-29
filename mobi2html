@@ -80,12 +80,13 @@ foreach my $r (@records) {
 	my $data = $r->{"data"};
 	my $size = length ($data);
 	my $filename = "record-$id";
-	my ($x, $y) = imgsize(\$data);
+	my ($x, $y, $type) = imgsize(\$data);
 	if (defined $x) {
 	    print STDERR "Record $id - $cat - $offset - $size - $x x $ y\n";
 	    $image_index++;
-	    $image_index_to_filename{$image_index} = $filename;
-	    open DATA, ">$explodedir/$filename";
+	    $image_index_to_filename{$image_index} = "$filename.$type";
+	    open DATA, ">$explodedir/$filename.$type";
+	    binmode (DATA);
 	    print DATA $data;
 	    close DATA;
 #	    print STDERR "SIZE: $x $y\n";
@@ -109,7 +110,13 @@ foreach my $r (@records) {
 
 my $text = $pdb->text;
 
+#{
+#    local $/;
+#    $text =~ s/\r//g;
+#}
+
 if (defined $opt_rawhtml) {
+    binmode (STDOUT);
     print $text;
 }
 
@@ -125,6 +132,10 @@ while ($cp < $len) {
 	    print STDERR "FILEPOS: $cp - $1\n";
 	    $fileposmap{$1} = 1;
 	}
+	if ($s =~ /^filepos=\"(\d+)\"/) {
+	    print STDERR "FILEPOS: $cp - $1\n";
+	    $fileposmap{$1} = 1;
+	}
     }
     $cp++;
 }
@@ -134,7 +145,7 @@ my $offset = 0;
 foreach my $pos (sort keys %fileposmap) {
     print STDERR "NAMEPOS: $pos\n";
     my $a = substr ($text, $pos+$offset, 2);
-    if ($a eq "<a") {
+    if ($a eq "<a" or $a eq "<A") {
 	substr ($text, $pos+$offset, 2, "<a name=\"" . $pos . "\"");
 	$offset += (8 + length ($pos));
     } else {

@@ -101,6 +101,10 @@ if (defined $opt_mobifile) {
     $mobifile = $opt_mobifile;
 }
 
+if ($mobifile eq $filename) {
+    $mobifile .= ".mobi";
+}
+
 MobiPerl::MobiFile::save_mobi_file ($tree, $mobifile, $linksinfo, $config);
 
 #

@@ -127,7 +127,46 @@ print "LASTID: $lastid\n";
 
 print "-----------------\n";
 
+
+
 if (defined $opt_outfile) {
+    my $coveroffset = -1;
+    my $thumboffset = -1;
+
+    if (defined $opt_addthumbnail) {
+	my $img = Palm::PDB->new_Record();
+	$img->{"categori"} = 0;
+	$img->{"attributes"}{"Dirty"} = 1;
+	$img->{"id"} = $lastid+1;
+	my $data = get_cover_image_data ($opt_addthumbnail);
+	$img->{"data"} = $data;
+	$pdb->append_Record ($img);
+	my @records = @{$pdb->{"records"}};
+	my $thumbindex = $#records;
+	$thumboffset = $thumbindex-$imgindex;
+    }
+
+    if (defined $opt_coverimage) {
+	if ($coverimageindex != 0) {
+	    print STDERR "Setting record $coverimageindex to $opt_coverimage\n";
+	    my $data = get_cover_image_data ($opt_coverimage);
+	    $pdb->{"records"}->[$coverimageindex]->{"data"} = $data;
+	    $coveroffset = $coverimageindex-$imgindex;
+	} else {
+	    my $img = Palm::PDB->new_Record();
+	    $img->{"categori"} = 0;
+	    $img->{"attributes"}{"Dirty"} = 1;
+	    $img->{"id"} = $lastid+1;
+	    my $data = get_cover_image_data ($opt_coverimage);
+	    $img->{"data"} = $data;
+	    $pdb->append_Record ($img);
+	    my @records = @{$pdb->{"records"}};
+	    my $coverindex = $#records;
+	    $coveroffset = $coverindex-$imgindex;
+	}
+    }
+
+
     if ($ismobi) {
 	my $mh = substr ($r0->{"data"}, 16);
 
@@ -154,6 +193,9 @@ if (defined $opt_outfile) {
 	    print STDERR "PATCHING INGINDEX $imgindex -> $newimgindex\n";
 	    substr ($mh, 0xb0, 4, pack ("nn", 0, $newimgindex));
 	}
+	$mh->set_thumb_offset ($thumboffset) if ($thumboffset >= 0);
+	$mh->set_cover_offset ($coveroffset) if ($coveroffset >= 0);
+	
 	$r0->{"data"} = $palmdocheader . $mh;
     } else {
 	my $mh = new MobiPerl::MobiHeader;
@@ -168,6 +210,8 @@ if (defined $opt_outfile) {
 	$mh->set_author ($opt_author) if defined $opt_author;
 	$mh->set_publisher ($opt_publisher) if defined $opt_publisher;
 	$mh->set_image_record_index ($imgindex);
+	$mh->set_thumb_offset ($thumboffset) if ($thumboffset >= 0);
+	$mh->set_cover_offset ($coveroffset) if ($coveroffset >= 0);
 
 	$pdb->{"type"} = "BOOK";
 	$pdb->{"creator"} = "MOBI";
@@ -175,31 +219,6 @@ if (defined $opt_outfile) {
 	$r0->{"data"} = $palmdocheader . $mh->get_data ();
     }
 
-    if (defined $opt_addthumbnail) {
-	my $img = Palm::PDB->new_Record();
-	$img->{"categori"} = 0;
-	$img->{"attributes"}{"Dirty"} = 1;
-	$img->{"id"} = $lastid+1;
-	my $data = get_cover_image_data ($opt_addthumbnail);
-	$img->{"data"} = $data;
-	$pdb->append_Record ($img);
-    }
-
-    if (defined $opt_coverimage) {
-	if ($coverimageindex != 0) {
-	    print STDERR "Setting record $coverimageindex to $opt_coverimage\n";
-	    my $data = get_cover_image_data ($opt_coverimage);
-	    $pdb->{"records"}->[$coverimageindex]->{"data"} = $data;
-	} else {
-	    my $img = Palm::PDB->new_Record();
-	    $img->{"categori"} = 0;
-	    $img->{"attributes"}{"Dirty"} = 1;
-	    $img->{"id"} = $lastid+1;
-	    my $data = get_cover_image_data ($opt_coverimage);
-	    $img->{"data"} = $data;
-	    $pdb->append_Record ($img);
-	}
-    }
 
     $pdb->Write ($opt_outfile);
 }

@@ -68,6 +68,10 @@ my $mobifile = $filename;
 $mobifile =~ s/\.opf/\.mobi/;
 $mobifile = $opt_mobifile if defined $opt_mobifile;
 
+if ($mobifile eq $filename) {
+    $mobifile .= ".mobi";
+}
+
 my $linksinfo = new MobiPerl::LinksInfo;
 
 my $tree = MobiPerl::Util::get_tree_from_opf ($filename, $config, $linksinfo);

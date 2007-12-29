@@ -71,6 +71,11 @@ my $mobifile = $filename;
 $mobifile =~ s/\.lit/\.mobi/;
 $mobifile = $opt_mobifile if defined $opt_mobifile;
 
+if ($mobifile eq $filename) {
+    $mobifile .= ".mobi";
+}
+
+
 $opffile =~ s/\.lit/.opf/;
 
 chdir "ctmp";
