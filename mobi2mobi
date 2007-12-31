@@ -51,6 +51,7 @@ use Image::Size;   # Used to recognize the first record that is an image
 
 
 use MobiPerl::MobiHeader; # The MobiHeader package file is in the distribution
+use MobiPerl::Util;
 
 use strict;
 
@@ -113,6 +114,7 @@ foreach my $r (@records) {
     }
     $imgindex++;
 }
+print "IMAGE INDEX: $imgindex\n";
 
 my $coverimageindex = $imgindex;
 
@@ -133,30 +135,25 @@ if (defined $opt_outfile) {
     my $coveroffset = -1;
     my $thumboffset = -1;
 
-    if (defined $opt_addthumbnail) {
-	my $img = Palm::PDB->new_Record();
-	$img->{"categori"} = 0;
-	$img->{"attributes"}{"Dirty"} = 1;
-	$img->{"id"} = $lastid+1;
-	my $data = get_cover_image_data ($opt_addthumbnail);
-	$img->{"data"} = $data;
-	$pdb->append_Record ($img);
-	my @records = @{$pdb->{"records"}};
-	my $thumbindex = $#records;
-	$thumboffset = $thumbindex-$imgindex;
-    }
-
     if (defined $opt_coverimage) {
 	if ($coverimageindex != 0) {
 	    print STDERR "Setting record $coverimageindex to $opt_coverimage\n";
-	    my $data = get_cover_image_data ($opt_coverimage);
+##	    my $data = get_cover_image_data ($opt_coverimage);
+	    my $data = "";
+	    if ($ismobi) { # only rescale if not a mobi file
+		$data = MobiPerl::Util::get_image_data ($opt_coverimage, 0);
+	    } else {
+		$data = MobiPerl::Util::get_image_data ($opt_coverimage, 1);
+	    }
+
 	    $pdb->{"records"}->[$coverimageindex]->{"data"} = $data;
 	    $coveroffset = $coverimageindex-$imgindex;
 	} else {
 	    my $img = Palm::PDB->new_Record();
 	    $img->{"categori"} = 0;
 	    $img->{"attributes"}{"Dirty"} = 1;
-	    $img->{"id"} = $lastid+1;
+	    $lastid++;
+	    $img->{"id"} = $lastid;
 	    my $data = get_cover_image_data ($opt_coverimage);
 	    $img->{"data"} = $data;
 	    $pdb->append_Record ($img);
@@ -166,6 +163,20 @@ if (defined $opt_outfile) {
 	}
     }
 
+    if (defined $opt_addthumbnail) {
+	my $img = Palm::PDB->new_Record();
+	$img->{"categori"} = 0;
+	$img->{"attributes"}{"Dirty"} = 1;
+	$lastid++;
+	$img->{"id"} = $lastid;
+##	my $data = get_cover_image_data ($opt_addthumbnail);
+	my $data = MobiPerl::Util::get_thumb_cover_image_data ($opt_addthumbnail);
+	$img->{"data"} = $data;
+	$pdb->append_Record ($img);
+	my @records = @{$pdb->{"records"}};
+	my $thumbindex = $#records;
+	$thumboffset = $thumbindex-$imgindex;
+    }
 
     if ($ismobi) {
 	my $mh = substr ($r0->{"data"}, 16);
@@ -223,17 +234,6 @@ if (defined $opt_outfile) {
     $pdb->Write ($opt_outfile);
 }
 
-
-sub iso2hex($) {
-    my $hex = '';
-    for (my $i = 0; $i < length($_[0]); $i++) {
-	my $ordno = ord substr($_[0], $i, 1);
-	$hex .= sprintf("%lx", $ordno);
-    }
-
-    $hex =~ s/ $//;;
-    $hex;
-}
 
 sub parse_record_0 {
     my $rec = shift;
@@ -309,7 +309,7 @@ sub parse_mobi_exth {
 	my $hsize = sprintf ("%x", $size);
 	my $desc = MobiPerl::EXTH::get_description ($id);
 	if (MobiPerl::EXTH::is_binary_data ($id)) {
-	    $content = iso2hex ($content);
+	    $content = MobiPerl::Util::iso2hex ($content);
 	}
 	print "EXTH    item: $id - $desc - $contlen - $content\n";
 	$pos += $size;
@@ -326,13 +326,15 @@ sub get_cover_image_data {
 	return $data;
     }
 
-    open(IMG, $filename) or die "can't open $filename: $!";
-    binmode(IMG);       # now DOS won't mangle binary input from GIF
-    my $buff;
-    while (read(IMG, $buff, 8 * 2**10)) {
-	$data .= $buff;
-    }
-    return $data;
+    return MobiPerl::Util::get_image_data ($filename, 0);
+
+#    open(IMG, $filename) or die "can't open $filename: $!";
+#    binmode(IMG);       # now DOS won't mangle binary input from GIF
+#    my $buff;
+#    while (read(IMG, $buff, 8 * 2**10)) {
+#	$data .= $buff;
+#    }
+#    return $data;
 }
 
 

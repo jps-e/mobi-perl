@@ -134,6 +134,55 @@ sub one_html_file {
 	$title =~ s/\.htm//;
 	$config->title ($title);
     }
+
+    # Fix links
+
+    my @refs = $tree->look_down ("href", qr/^\#/);
+    my @hrefs = ();
+    my @refels = ();
+    my %href_to_ref = ();
+    foreach my $r (@refs) {
+	$r->attr ("filepos", "0000000000");
+	my $key = $r->attr ("href");
+	$key =~ s/\#//g;
+	push @hrefs, $key;
+	push @refels, $r;
+#	$r->attr ("href", undef);
+    }
+
+    my $data = $tree->as_HTML ();
+    foreach my $i (0..$#hrefs) {
+	my $h = $hrefs[$i];
+	my $r = $refels[$i];
+	my $searchfor1 = "id=\"$h\"";
+	my $searchfor2 = "<a name=\"$h\"";
+	
+###	print STDERR "SEARCHFOR1: $searchfor1\n";
+	my $pos = index ($data, $searchfor1);
+	if ($pos >= 0) {
+	    #
+	    # search backwards for <
+	    #
+	    
+	    while (substr ($data, $pos, 1) ne "<") {
+		$pos--;
+	    }
+	    
+##	    $pos -=4; # back 4 positions to get to <h2 id=
+	    my $form = "0" x (10-length($pos)) . "$pos";
+	    print STDERR "POSITION: $pos - $searchfor1 - $form\n";
+	    $r->attr ("filepos", "$form");
+	} else {
+###	    print STDERR "SEARCHFOR2: $searchfor2\n";
+	    $pos = index ($data, $searchfor2);
+	    if ($pos >= 0) {
+		my $form = "0" x (10-length($pos)) . "$pos";
+###		print STDERR "POSITION: $pos - $searchfor2 - $form\n";
+		$r->attr ("filepos", "$form");
+	    } else {
+	    }
+	}
+    }
     return $tree;
 }
 

@@ -41,7 +41,8 @@ my %type_to_desc = (1 => "drm_server_id",
 my %binary_data = (300 => 1,
 		   201 => 1,
 		   202 => 1,
-		   203 => 1);
+		   203 => 1,
+		   300 => 1,);
 
 
 sub new {

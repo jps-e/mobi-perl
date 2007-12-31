@@ -1,0 +1,27 @@
+
+
+Changes in 0.0.19:
+
+- Fixed resizing of image data and rescaling of image for
+  mobi2mobi. The rescaling is neccessary because of the Gen3
+  not working on files with images with width larger than 480
+  or something around that size. This seems to be a bug in the
+  Gen3.
+
+- Added Image::BMP to Util.pm. Used to convert a file
+  from BMP to GD if needed.
+
+- Fixed TOC bug caused by filepos attribute not removed in 
+  mobit2html.
+
+- Changed max file size for images to 60000.
+  From MobiPocket forum: "- the size of each JPEG image is limited to
+  about 63K for a number of technical reasons "
+
+- Fixed filepos bug in html2mobi so now TOC in the beginning works
+  for Twain example.
+
+- Fixed mobi2html so it works for the Alice example were the filepos
+  point to "<h" instead of pointing to a "<a".
+
+

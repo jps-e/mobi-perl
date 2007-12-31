@@ -3,6 +3,8 @@ package MobiPerl::Util;
 use strict;
 
 use GD;
+use Image::BMP;
+
 use HTML::TreeBuilder;
 
 my $rescale_large_images = 1;
@@ -371,7 +373,7 @@ sub get_text_image {
     my $width = shift;
     my $height = shift;
     my $text = shift;
-    my $image = Image::Magick->new;
+#    my $image = Image::Magick->new;
 #    $image->Set(size=>"$width x $height");
 #    $image->ReadImage('xc:white');
 #    $image->Draw (pen => "red",
@@ -399,9 +401,9 @@ sub get_gd_image_data {
     # the gif file with size 600x800
     #
 
-#    if ($filename =~ /\.gif/) {
-#	return $im->gif ();
-#    }
+##    if ($filename =~ /\.gif/ or $filename =~ /\.GIF/) {
+##	return $im->gif ();
+##    }
 
     if ($quality <= 0) {
 	return $im->jpeg ();
@@ -431,6 +433,9 @@ sub add_text_to_image {
 
 sub get_image_data {
     my $filename = shift;
+    my $rescale = shift;
+
+    $rescale_large_images = $rescale if defined $rescale;
 
     my $data = "";
 
@@ -439,7 +444,31 @@ sub get_image_data {
 	return $data;
     }
 
+    print STDERR "Reading data from file: $filename\n";
+
     my $p = new GD::Image ("$filename");
+    if (not defined $p) {
+	my $im = new Image::BMP (file => "$filename");
+	if (defined $im) {
+	    my $w = $im->{Width};
+	    my $h = $im->{Height};
+	    print STDERR "BMP IMAGE $filename: $w x $h\n";
+	    $p = new GD::Image ($w, $h);
+	    foreach my $x (0..$w-1) {
+		foreach my $y (0..$h-1) {
+		    my ($r,$g,$b) = $im->xy_rgb ($x, $y);
+		    my $index = $p->colorExact ($r, $g, $b);
+		    if ($index == -1) {
+			$index = $p->colorAllocate ($r, $g, $b);
+		    }
+		    $p->setPixel ($x, $y, $index);
+		}
+	    }
+	}
+##	open IMAGE, ">dummy-$filename.jpg";
+##	print IMAGE $p->jpeg ();
+##	close IMAGE;
+    }
     my ($x, $y) = $p->getBounds();
 #    my $x = $p->width;
 #    my $y = $p->height;
@@ -456,6 +485,7 @@ sub get_image_data {
 	    # width might be the problem...
 	    my $scale = 480.0/$x; # 0.99 does not work, 480x640 works
 	    $p = MobiPerl::Util::scale_gd_image ($p, $scale);
+##	    $p = MobiPerl::Util::scale_gd_image ($p, 600, 810);
 	}
     }
 
@@ -464,9 +494,16 @@ sub get_image_data {
     #   or does it work just setting width?
     #
 
+  ##  $filename =~ s/\....$/\.gif/;
+  ##  print STDERR "UTIL FILENAME: $filename\n";
+
     my $quality = -1;
     my $size = length (MobiPerl::Util::get_gd_image_data ($p, $filename));
-    my $maxsize = 65536;
+    my $maxsize = 60000;
+
+##    $maxsize = 35000;
+
+
     if ($size > $maxsize) {
 	$quality = 100;
 	while (length (MobiPerl::Util::get_gd_image_data ($p, $filename, $quality)) >
@@ -484,8 +521,20 @@ sub get_image_data {
 ##	print STDERR "Rescaling $$scale\n";
 ##    }
 
+
     my $data = MobiPerl::Util::get_gd_image_data ($p, $filename, $quality);
     return $data;
+}
+
+sub iso2hex($) {
+    my $hex = '';
+    for (my $i = 0; $i < length($_[0]); $i++) {
+	my $ordno = ord substr($_[0], $i, 1);
+	$hex .= sprintf("%lx", $ordno);
+    }
+
+    $hex =~ s/ $//;;
+    $hex;
 }
 
 

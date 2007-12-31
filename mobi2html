@@ -18,6 +18,9 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+use FindBin qw($RealBin);
+use lib "$RealBin";
+
 use HTML::TreeBuilder;
 use Palm::PDB;
 use Palm::Doc;
@@ -25,6 +28,9 @@ use Image::Size;
 use Date::Parse;
 use Date::Format;
 use Getopt::Mixed;
+
+use MobiPerl::EXTH;
+use MobiPerl::Util;
 
 use strict;
 
@@ -129,11 +135,11 @@ while ($cp < $len) {
     my $s = substr ($text, $cp, 50);
     if (substr ($s, 0, 7) eq "filepos") {
 	if ($s =~ /^filepos=(\d+)/) {
-	    print STDERR "FILEPOS: $cp - $1\n";
+#	    print STDERR "FILEPOS: $cp - $1\n";
 	    $fileposmap{$1} = 1;
 	}
 	if ($s =~ /^filepos=\"(\d+)\"/) {
-	    print STDERR "FILEPOS: $cp - $1\n";
+#	    print STDERR "FILEPOS: $cp - $1\n";
 	    $fileposmap{$1} = 1;
 	}
     }
@@ -142,15 +148,23 @@ while ($cp < $len) {
 print STDERR "Found all filepos\n";
 
 my $offset = 0;
+
+print STDERR "Adding name attributes\n";
 foreach my $pos (sort keys %fileposmap) {
-    print STDERR "NAMEPOS: $pos\n";
+#    print STDERR "NAMEPOS: $pos\n";
     my $a = substr ($text, $pos+$offset, 2);
     if ($a eq "<a" or $a eq "<A") {
 	substr ($text, $pos+$offset, 2, "<a name=\"" . $pos . "\"");
 	$offset += (8 + length ($pos));
-    } else {
-	print STDERR "WARNING: Not an anchor: $a\n";
+	next;
     }
+    if ($a eq "<h" or $a eq "<H") {
+	# Put an empty acnhor before header
+	substr ($text, $pos+$offset, 2, "<a name=\"" . $pos . "\"></a><h");
+	$offset += (15 + length ($pos));
+	next;
+    }
+    print STDERR "WARNING: $pos - Not an anchor: $a\n";
 }
 
 
@@ -189,11 +203,13 @@ sub fix_image_tags {
 sub fix_filepos_attributes {
     my $tree = shift;
     my @ael = $tree->find ("a");
+    print STDERR "Fixing filpos attribute\n";
     foreach my $a (@ael) {
 	my $filepos = $a->attr ("filepos");
 	if ($filepos) {
 	    $a->attr ("href", "\#$filepos");
-	    print STDERR "FIX FILEPOS ATTR: $filepos\n";
+	    $a->attr ("filepos", undef);
+##	    print STDERR "FIX FILEPOS ATTR: $filepos\n";
 	}
     }
 }
@@ -251,6 +267,9 @@ sub parse_mobi_exth {
 	my ($id, $size, $content) = unpack ("NNa$contlen", substr ($data, $pos));
 	my $hid = sprintf ("%x", $id);
 	my $hsize = sprintf ("%x", $size);
+	if (MobiPerl::EXTH::is_binary_data ($id)) {
+	    $content = MobiPerl::Util::iso2hex ($content);
+	}
 	print STDERR "ITEM: $hid $hsize - $id $size - $content\n";
 	$pos += $size;
     }

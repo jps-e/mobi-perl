@@ -254,7 +254,7 @@ sub get_extended_header_data {
 	$eh->set ("thumboffset", pack ("N", $toffset));
     }
 
-#    $eh->set ("hasfakecover", pack ("N", 0));
+##    $eh->set ("hasfakecover", pack ("N", 0));
 
     return $eh->get_data ();
 }
