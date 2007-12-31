@@ -93,7 +93,9 @@ if ($#filenames == 0) {
 
 if (defined $opt_htmlfile) {
     open HTML, ">$opt_htmlfile" or die "Could not open html file $opt_htmlfile: $!\n";
-    print HTML $tree->as_HTML;
+    my $text = $tree->as_HTML;
+    $text =~ s/&amp\;nbsp\;/&nbsp\;/g;
+    print HTML $text;
     close HTML;
 }
 
@@ -134,6 +136,8 @@ sub one_html_file {
 	$title =~ s/\.htm//;
 	$config->title ($title);
     }
+
+    MobiPerl::Util::fix_pre_tags ($tree);
 
     # Fix links
 

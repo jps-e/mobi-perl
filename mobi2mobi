@@ -140,11 +140,15 @@ if (defined $opt_outfile) {
 	    print STDERR "Setting record $coverimageindex to $opt_coverimage\n";
 ##	    my $data = get_cover_image_data ($opt_coverimage);
 	    my $data = "";
-	    if ($ismobi) { # only rescale if not a mobi file
-		$data = MobiPerl::Util::get_image_data ($opt_coverimage, 0);
-	    } else {
-		$data = MobiPerl::Util::get_image_data ($opt_coverimage, 1);
-	    }
+	    #
+            # Alaway rescale since the bug seems to be in Gen 3
+	    #
+	    $data = MobiPerl::Util::get_image_data ($opt_coverimage, 1);
+#	    if ($ismobi) { # only rescale if not a mobi file
+#		$data = MobiPerl::Util::get_image_data ($opt_coverimage, 0);
+#	    } else {
+#		$data = MobiPerl::Util::get_image_data ($opt_coverimage, 1);
+#	    }
 
 	    $pdb->{"records"}->[$coverimageindex]->{"data"} = $data;
 	    $coveroffset = $coverimageindex-$imgindex;
@@ -154,7 +158,7 @@ if (defined $opt_outfile) {
 	    $img->{"attributes"}{"Dirty"} = 1;
 	    $lastid++;
 	    $img->{"id"} = $lastid;
-	    my $data = get_cover_image_data ($opt_coverimage);
+	    my $data = MobiPerl::Util::get_image_data ($opt_coverimage, 1);
 	    $img->{"data"} = $data;
 	    $pdb->append_Record ($img);
 	    my @records = @{$pdb->{"records"}};
@@ -328,13 +332,6 @@ sub get_cover_image_data {
 
     return MobiPerl::Util::get_image_data ($filename, 0);
 
-#    open(IMG, $filename) or die "can't open $filename: $!";
-#    binmode(IMG);       # now DOS won't mangle binary input from GIF
-#    my $buff;
-#    while (read(IMG, $buff, 8 * 2**10)) {
-#	$data .= $buff;
-#    }
-#    return $data;
 }
 
 

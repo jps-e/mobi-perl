@@ -59,6 +59,8 @@ sub save_mobi_file {
     $header->{'recsize'} = DOC_RECSIZE;
 
     my $body = $html->as_HTML ();
+    $body =~ s/&amp\;nbsp\;/&nbsp\;/g; #fix &nbsp; that fix_pre_tags have added
+
 
 #    print STDERR "HTMLSIZE: " . length ($body) . "\n";
 

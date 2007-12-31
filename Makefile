@@ -1,5 +1,7 @@
 
-TARFILE = mobiperl-0.0.19.tar
+FILEPREFIX = mobiperl-0.0.20
+TARFILE =$(FILEPREFIX).tar
+RARFILE =$(FILEPREFIX)-win.rar
 
 FILES = mobi2html html2mobi lit2mobi \
         mobi2mobi opf2mobi \
@@ -36,7 +38,7 @@ hm:
 	copy html2mobi.exe c:\Perlb820\bin\
 
 om:
-	pp -M FindBin -M Palm::PDB -M Palm::Doc -M Date::Format -M Getopt::Mixed -M Image::Size -M -M Image::BMP MobiPerl::MobiHeader -M MobiPerl::MobiFile -M MobiPerl::Opf -M MobiPerl::Config -M MobiPerl::LinksInfo -M XML::Parser::Lite::Tree -M Data::Dumper -M GD -M HTML::TreeBuilder -o opf2mobi.exe opf2mobi
+	pp -M FindBin -M Palm::PDB -M Palm::Doc -M Date::Format -M Getopt::Mixed -M Image::Size -M Image::BMP -M MobiPerl::MobiHeader -M MobiPerl::MobiFile -M MobiPerl::Opf -M MobiPerl::Config -M MobiPerl::LinksInfo -M XML::Parser::Lite::Tree -M Data::Dumper -M GD -M HTML::TreeBuilder -o opf2mobi.exe opf2mobi
 	copy opf2mobi.exe c:\Perlb820\bin\
 
 lm:
@@ -55,4 +57,5 @@ mh:
 all:	hm om lm mm mh
 
 pack:
-	"c:\Program Files\WinRAR\rar" a mobiperl-0.0.17-win.rar html2mobi.exe opf2mobi.exe lit2mobi.exe mobi2mobi.exe mobi2html.exe
+	"c:\Program Files\WinRAR\rar" a $(RARFILE) html2mobi.exe opf2mobi.exe lit2mobi.exe mobi2mobi.exe mobi2html.exe $(TARFILE)
+

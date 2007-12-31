@@ -4,6 +4,7 @@ use strict;
 
 use GD;
 use Image::BMP;
+use Image::Size;
 
 use HTML::TreeBuilder;
 
@@ -437,14 +438,32 @@ sub get_image_data {
 
     $rescale_large_images = $rescale if defined $rescale;
 
+    my $maxsize = 61000;
+    my $maxwidth = 480;
+
     my $data = "";
 
     if (not -e $filename) {
 	print STDERR "Image file does not exist: $filename\n";
 	return $data;
     }
-
     print STDERR "Reading data from file: $filename\n";
+
+    my $filesize = -s $filename;
+    my ($x, $y) = imgsize ($filename);
+
+    if ($filesize < $maxsize and $x < $maxwidth) {
+	# No transformation has to be done, keep data as is
+	print STDERR "No transformation: $filename\n";
+	open(IMG, $filename) or die "can't open $filename: $!";
+	binmode(IMG);       # now DOS won't mangle binary input from GIF
+	my $buff;
+	while (read(IMG, $buff, 8 * 2**10)) {
+	    $data .= $buff;
+	}
+	return $data;
+    }
+
 
     my $p = new GD::Image ("$filename");
     if (not defined $p) {
@@ -499,10 +518,6 @@ sub get_image_data {
 
     my $quality = -1;
     my $size = length (MobiPerl::Util::get_gd_image_data ($p, $filename));
-    my $maxsize = 60000;
-
-##    $maxsize = 35000;
-
 
     if ($size > $maxsize) {
 	$quality = 100;
@@ -535,6 +550,36 @@ sub iso2hex($) {
 
     $hex =~ s/ $//;;
     $hex;
+}
+
+sub fix_pre_tags {
+    my $tree = shift;
+
+    print STDERR "FIX PRE TAGS\n";
+
+    my @pres = $tree->find ("pre");
+
+    foreach my $pre (@pres) {
+	print STDERR "FIX PRE TAGS: $pre\n";
+	my $p = HTML::Element->new("p", align => "left");
+
+	my @content = $pre->content_list ();
+	my $text = $content[0];
+
+
+	my @lines = split ("\n", $text);
+	foreach my $line (@lines) {
+	    my $br = HTML::Element->new("br");
+	    $line =~ s/\s/&nbsp\;/g;
+
+	    print STDERR $line;
+	    $p->push_content ($line);
+	    $p->push_content ($br);
+	    $p->push_content ("\n");
+	}
+	$pre->replace_with ($p);
+    }
+
 }
 
 
