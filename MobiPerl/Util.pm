@@ -173,7 +173,16 @@ sub get_tree_from_opf {
 
 	my $tree = new HTML::TreeBuilder ();
 	$tree->ignore_unknown (0);
-	$tree->parse_file ($filename) || die "Could not find file: $filename\n";
+
+	open FILE, "<$filename" or die "Could not find file: $filename\n";
+	{
+	    local $/;
+	    my $content = <FILE>;
+	    $content =~ s/&\#226;&\#8364;&\#166;/&\#8230;/g;
+	    # fixes bug in coding
+	    $tree->parse ($content);
+	    $tree->eof();
+	}
 
 ###	check_for_links ($tree);
 	$linksinfo->check_for_links ($tree);
@@ -549,7 +558,50 @@ sub iso2hex($) {
     }
 
     $hex =~ s/ $//;;
-    $hex;
+    $hex = "0x$hex";
+    return $hex;
+}
+
+sub fix_html {
+    my $tree = shift;
+
+    print STDERR "FIX HTML\n";
+
+    #
+    # Fix strange HTML code
+    #
+
+    my @paras = $tree->find ("p");
+    my $inside_para = 0;
+    my $newp;
+    foreach my $p (@paras) {
+	if (not $inside_para) {
+	    $newp = HTML::Element->new("p");
+	    $inside_para = 1;
+	}
+	my $html = $p->as_HTML ();
+##	print STDERR "$html\n";
+	if ($html =~ /\&nbsp\;/) {
+##	    print STDERR $newp->as_HTML ();
+	    my $h = $newp->as_HTML ();
+##	    if ($h =~ /All three Stewards/) {
+##		last;
+##	    }
+	    $p->replace_with ($newp);
+	    $inside_para = 0;
+	    print STDERR "P";
+	} else {
+	    my @span = $p->find ("span");
+	    foreach my $span (@span) {
+		$span->replace_with ($span->content_list ());
+	    }
+	    $p->normalize_content ();
+	    $newp->push_content ($p->content_list ());
+	    $newp->push_content (" ");
+	    $p->delete ();
+	    print STDERR "+";
+	}
+    }
 }
 
 sub fix_pre_tags {

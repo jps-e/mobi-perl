@@ -13,6 +13,14 @@ my %typename_to_type = ("author" => 100,
 			"coveroffset" => 201,
 			"thumboffset" => 202,
 			"hasfakecover" => 203,
+			"204"          => 204,
+			"205"          => 205,
+			"206"          => 206,
+			"207"          => 207,
+			"401"          => 401,
+			"403"          => 403,
+			"501"          => 501,
+			"502"          => 502,
 			);
 
 my %type_to_desc = (1 => "drm_server_id",
@@ -38,11 +46,31 @@ my %type_to_desc = (1 => "drm_server_id",
 		   202 => "ThumbOffset",
 		   203 => "hasFakeCover");
 
-my %binary_data = (300 => 1,
+my %binary_data = (114 => 1,
 		   201 => 1,
 		   202 => 1,
 		   203 => 1,
-		   300 => 1,);
+		   204 => 1,
+		   205 => 1,
+		   206 => 1,
+		   207 => 1,
+		   300 => 1,
+		   401 => 1,
+		   403 => 1,
+		   );
+
+my %format = (114 => 4,
+	      201 => 4,
+	      202 => 4,
+	      203 => 4,
+	      204 => 4,
+	      205 => 4,
+	      206 => 4,
+	      207 => 4,
+	      401 => 4,
+	      403 => 1);
+
+
 
 
 sub new {
@@ -145,12 +173,35 @@ sub initialize_from_data {
 	my ($id, $size) = unpack ("NN", substr ($data, $pos));
 	my $contlen = $size-8;
 	my ($type, $size, $content) = unpack ("NNa$contlen", substr ($data, $pos));
+	if (defined $format{$type}) {
+	    my $len = $format{$type};
+	    print STDERR "TYPE:$type:$len\n";
+	    if ($len == 4) {
+		($type, $size, $content) = unpack ("NNN", substr ($data, $pos));
+		print STDERR "CONT:$content\n";
+	    }
+	    if ($len == 1) {
+		($type, $size, $content) = unpack ("NNC", substr ($data, $pos));
+		print STDERR "CONT:$content\n";
+	    }
+	}
 	push @{$self->{TYPE}}, $type;
 	push @{$self->{DATA}}, $content;
 	$pos += $size;
     }
     if ($self->get_data () ne substr ($data, 0, $len)) {
 	print STDERR "ERROR: generated EXTH does not match original\n";
+	my $s1 = $self->get_data ();
+	my $s0 = substr ($data, 0, $len);
+	foreach my $i (0..length ($s0)-1) {
+	    if (substr ($s0, $i, 1) ne substr ($s1, $i, 1)) {
+		my $c0 = substr ($s0, $i, 1);
+		my $c1 = substr ($s1, $i, 1);
+		$c0 = MobiPerl::Util::iso2hex ($c0);
+		$c1 = MobiPerl::Util::iso2hex ($c1);
+		print STDERR "MISMATCH POS:$i:$c0:$c1\n";
+	    }
+	}
     }
 ##    open EXTH0, ">exth0";
 ##    print EXTH0 substr ($data, 0, $len);
@@ -168,7 +219,17 @@ sub get_data {
     foreach my $i (0..$#type) {
 	my $type = $type[$i];
 	my $data = $data[$i];
-	$content .= pack ("NNa*", $type, length ($data)+8, $data);
+	if (defined $format{$type}) {
+	    my $len = $format{$type};
+	    if ($len == 4) {
+		$content .= pack ("NNN", $type, $len+8, $data);
+	    }
+	    if ($len == 1) {
+		$content .= pack ("NNC", $type, $len+8, $data);
+	    }
+	} else {
+	    $content .= pack ("NNa*", $type, length ($data)+8, $data);
+	}
 	$n_items++;
     }
     #

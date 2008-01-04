@@ -33,11 +33,11 @@ use File::Copy;
 use vars qw ($opt_title $opt_author $opt_htmlfile $opt_mobifile
 	     $opt_coverimage $opt_noimages
 	     $opt_tocfirst $opt_addcoverlink
-	     $opt_prefixtitle);
+	     $opt_prefixtitle $opt_fixhtml);
 
 Getopt::Mixed::getOptions ("title=s author=s htmlfile=s mobifile=s
                             coverimage=s noimages tocfirst addcoverlink
-                            prefixtitle=s");
+                            prefixtitle=s fixhtml");
 
 
 
@@ -84,10 +84,16 @@ my $linksinfo = new MobiPerl::LinksInfo;
 
 my $tree = MobiPerl::Util::get_tree_from_opf ($opffile, $config, $linksinfo);
 
+if (defined $opt_fixhtml) {
+    MobiPerl::Util::fix_html ($tree);
+}
+
 if (defined $opt_htmlfile) {
+    print STDERR "Saving HTML file: $opt_htmlfile\n";
     open HTML, ">$opt_htmlfile" or die "Could not open html file $opt_htmlfile: $!\n";
     print HTML $tree->as_HTML;
     close HTML;
+    move ($opt_htmlfile, "../");
 }
 
 MobiPerl::MobiFile::save_mobi_file ($tree, $mobifile, $linksinfo, $config);

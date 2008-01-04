@@ -98,7 +98,7 @@ foreach my $r (@records) {
 #	    print STDERR "SIZE: $x $y\n";
 	} else {
 	    if (defined $opt_record0 or defined $opt_saveallrecords) {
-		open DATA, ">$filename";
+		open DATA, ">$explodedir/$filename";
 		print DATA $data;
 		close DATA;
 	    }
@@ -182,6 +182,7 @@ my $htmlfile = $filename;
 $htmlfile =~ s/\.mobi/.html/;
 $htmlfile =~ s/\.prc/.html/;
 $htmlfile =~ s/\.pdb/.html/;
+$htmlfile =~ s/\.azw/.html/;
 open HTML, ">$explodedir/$htmlfile" or die "Could not open file $explodedir/$htmlfile";
 print HTML $tree->as_HTML;
 close HTML;

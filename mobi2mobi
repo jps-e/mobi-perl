@@ -56,12 +56,14 @@ use MobiPerl::Util;
 use strict;
 
 use vars qw ($opt_outfile $opt_title $opt_prefixtitle $opt_author 
-             $opt_publisher $opt_databasename
-	     $opt_addthumbnail $opt_coverimage $opt_patch);
+             $opt_publisher $opt_databasename $opt_fiximagesizes
+	     $opt_addthumbnail $opt_coverimage $opt_patch $opt_coveroffset
+	     $opt_exthtype $opt_exthdata);
 
 Getopt::Mixed::getOptions ("outfile=s title=s prefixtitle=s author=s 
-                            publisher=s databasename=s patch
-                            addthumbnail=s coverimage=s");
+                            publisher=s databasename=s patch fiximagesizes
+                            exthtype=s exthdata=s
+                            addthumbnail=s coverimage=s coveroffset=s");
 
 my $filename = shift;
 
@@ -100,6 +102,36 @@ $pdb->{"name"} = $opt_databasename if defined $opt_databasename;
 
 my @records = @{$pdb->{"records"}};
 
+
+#
+# Check image sizes and warn if they are to big
+#
+
+my $firstimageid = 0;
+foreach my $r (@records) {
+    my $data = $r->{"data"};
+    my ($x, $y) = imgsize (\$data);
+    if (defined $x) {
+	my $len = length ($data);
+	my $id = $r->{"id"};
+	if (not $firstimageid) {
+	    print "FIRST IMG Record $id\n";
+	    $firstimageid = $id;
+	}
+	if ($len > 65535) {
+	    print "ERROR:    Record $id - Image data size definitely too large: $len\n";
+	} else {
+	    if ($len > 61000) {
+		print "WARNING:  Record $id - Image data size might be too large: $len\n";
+	    }
+	}
+#	if ($x > 480) {
+#	    print "WARNING: Record $id - Image size $x x $y might be too large due to bug in Gen3\n";
+#	}
+    }
+}
+print "---------------------------------------------------\n";
+
 #
 # Find the first record with an image
 #
@@ -125,7 +157,7 @@ my $palmdocheader = substr ($r0->{"data"}, 0, 16);
 
 my $lastid = $records[$#records]->{"id"};
 
-print "LASTID: $lastid\n";
+##print "LASTID: $lastid\n";
 
 print "-----------------\n";
 
@@ -134,6 +166,22 @@ print "-----------------\n";
 if (defined $opt_outfile) {
     my $coveroffset = -1;
     my $thumboffset = -1;
+
+    $coveroffset = $opt_coveroffset if defined $opt_coveroffset;
+
+    if (defined $opt_fiximagesizes) {
+	foreach my $r (@records) {
+	    my $data = $r->{"data"};
+	    my ($x, $y) = imgsize (\$data);
+	    if (defined $x) {
+		open IMG, ">tmpimage";
+		binmode IMG;
+		print IMG $data;
+		close IMG;
+		$r->{"data"} = MobiPerl::Util::get_image_data ("tmpimage");
+	    }
+	}
+    }
 
     if (defined $opt_coverimage) {
 	if ($coverimageindex != 0) {
@@ -205,11 +253,15 @@ if (defined $opt_outfile) {
 	if (defined $opt_patch) {
 	    my ($imgflg, $imgindex) = unpack ("nn", substr ($mh, 0xb0));
 	    my $newimgindex = $imgindex;
-	    print STDERR "PATCHING INGINDEX $imgindex -> $newimgindex\n";
+	    print STDERR "PATCHING IMGINDEX $imgindex -> $newimgindex\n";
 	    substr ($mh, 0xb0, 4, pack ("nn", 0, $newimgindex));
 	}
-	$mh->set_thumb_offset ($thumboffset) if ($thumboffset >= 0);
-	$mh->set_cover_offset ($coveroffset) if ($coveroffset >= 0);
+	$mh = MobiPerl::MobiHeader::set_exth_data ($mh, "thumboffset", $thumboffset) if ($thumboffset >= 0);
+	$mh = MobiPerl::MobiHeader::set_exth_data ($mh, "coveroffset", $coveroffset) if ($coveroffset >= 0);
+
+	if (defined $opt_exthtype and defined $opt_exthdata) {
+	    $mh = MobiPerl::MobiHeader::set_exth_data ($mh, "$opt_exthtype", $opt_exthdata);
+	}
 	
 	$r0->{"data"} = $palmdocheader . $mh;
     } else {
@@ -416,13 +468,35 @@ This will only work if the book contains no other images.
 
 =item B<--coverimage IMAGEFILE>
 
-Set the over image of a book. If there already is a cover image it will
+Set the cover image of a book. If there already is a cover image it will
 be replaced.
 
-=item B<--outfile OUTFILE>
+=item B<--fiximagesizes>
 
-Name of the output file. No conversion is done if this is not
-specified.
+Fix image sizes so that they are less then 61000 bytes and width less
+then 480.
+
+=item B<--fiximagesizes>
+
+Fix image sizes so that they are less then 61000 bytes and width less
+then 480.
+
+=item B<--coveroffset OFFSET>
+
+Change the offset of the cover image so it points to another image.
+
+=item B<--exthtype TYPE>
+
+The type of the EXTH item you want to change.
+
+=item B<--exthdata TYPE>
+
+The data of the EXTH item you want to change.
+
+=item B<--outfile FILENAME>
+
+Specifies an output file. Only when this flag is given is any
+conversion done.
 
 
 =back

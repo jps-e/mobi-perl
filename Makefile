@@ -1,10 +1,12 @@
 
-FILEPREFIX = mobiperl-0.0.20
+FILEPREFIX = mobiperl-0.0.21
 TARFILE =$(FILEPREFIX).tar
 RARFILE =$(FILEPREFIX)-win.rar
 
-FILES = mobi2html html2mobi lit2mobi \
-        mobi2mobi opf2mobi \
+
+PALMFILES = Palm/Doc.pm
+
+MOBIPERLFILES = \
 	MobiPerl/Config.pm \
 	MobiPerl/EXTH.pm \
 	MobiPerl/LinksInfo.pm \
@@ -12,12 +14,21 @@ FILES = mobi2html html2mobi lit2mobi \
 	MobiPerl/MobiHeader.pm \
 	MobiPerl/Opf.pm \
 	MobiPerl/Util.pm \
-	Palm/Doc.pm \
+
+FILES = mobi2html html2mobi lit2mobi \
+        mobi2mobi opf2mobi \
 	gpl-3.0.txt \
 	Makefile README
 
 dist:
-	tar cvf $(TARFILE) $(FILES)
+	-rm -rf $(FILEPREFIX)
+	-mkdir $(FILEPREFIX)
+	-mkdir $(FILEPREFIX)/Palm
+	-mkdir $(FILEPREFIX)/MobiPerl
+	cp $(FILES) $(FILEPREFIX)/
+	cp $(PALMFILES) $(FILEPREFIX)/Palm/
+	cp $(MOBIPERLFILES) $(FILEPREFIX)/MobiPerl/
+	tar cvf $(TARFILE) $(FILEPREFIX)/
 	pod2html mobi2mobi > html/mobi2mobi.html
 	pod2html mobi2html > html/mobi2html.html
 	pod2html lit2mobi > html/lit2mobi.html

@@ -1,3 +1,33 @@
+Changes in 0.0.21:
+
+- Added detection of images that are to large in mobi2mobi
+
+- Added flag --fiximagesizes to mobi2mobi so it will fix the
+  incorrect image sizes.
+
+- --htmlfile flag for lit2mobi placed file in wrong dir, fixed now.
+
+- Added flag --coveroffset to mobi2mobi and fixed a bug relating to
+  this. Now it is possible to change which image that is cover image
+  by just specifying another offset.
+
+- The distribution is now a packed directory.
+
+- Added flags --exthtype and --exthdata to mobi2mobi to be able to
+  set any type. Values can be set for unknown types 204, 205, 206, 207,
+  401, 403. This can help to figure out what these items mean.
+
+Changes in 0.0.20:
+
+- <pre>-tags is now replaced with someting that displays better
+  in a MobiPocket reader.
+
+- Changed max file size for images to 61000 to avoid conversion of 
+  a BMP image.
+
+- Images are now not converted to jpg if they fit the file size and image size
+  requirements.
+
 
 
 Changes in 0.0.19:
