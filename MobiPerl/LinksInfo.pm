@@ -15,6 +15,8 @@ sub new {
 	LINKEXISTS => {},
 	RECORDINDEX => 0,
 	RECORDTOIMAGEFILE => {},
+	COVEROFFSET => -1,
+	THUMBOFFSET => -1,
 	@_
     }, $class;
     return $obj;
@@ -31,6 +33,30 @@ sub add_image_link {
 ##    print STDERR "ADD_IMAGE_LINK: $image\n";
     $self->{RECORDINDEX}++;
     $self->{RECORDTOIMAGEFILE}->{$self->get_record_index ()} = $image;
+}
+
+sub add_cover_image {
+    my $self = shift;
+    my $image = shift;
+    $self->add_image_link ($image);
+    $self->{COVEROFFSET} = $self->get_record_index () - 1;
+}
+
+sub add_thumb_image {
+    my $self = shift;
+    my $image = shift;
+    $self->add_image_link ($image);
+    $self->{THUMBOFFSET} = $self->get_record_index () - 1;
+}
+
+sub get_cover_offset {
+    my $self = shift;
+    return $self->{COVEROFFSET};
+}
+
+sub get_thumb_offset {
+    my $self = shift;
+    return $self->{THUMBOFFSET};
 }
 
 sub get_record_index {

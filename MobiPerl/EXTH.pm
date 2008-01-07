@@ -113,7 +113,8 @@ sub add {
     my $data = shift;
     my $type = $self->get_type ($typename);
     if (is_binary_data ($type)) {
-	print STDERR "EXTH add: $typename - $type - ", int($data), "\n";
+	my $hex = MobiPerl::Util::iso2hex ($data);
+	print STDERR "EXTH add: $typename - $type - ", int($data), " - $hex\n";
     } else {
 	print STDERR "EXTH add: $typename - $type - $data\n";
     }
@@ -140,14 +141,15 @@ sub set {
     my $typename = shift;
     my $data = shift;
     my $type = $self->get_type ($typename);
-###    print STDERR "EXTH setting data: $type - $data\n";
+    my $hex = MobiPerl::Util::iso2hex ($data);
+    print STDERR "EXTH setting data: $typename - $type - $data - $hex\n";
     if ($type) {
 	my @type = @{$self->{TYPE}};
 	my @data = @{$self->{DATA}};
 	my $found = 0;
 	foreach my $i (0..$#type) {
 	    if ($type[$i] == $type) {
-		print STDERR "EXTH setting data: $data - $type\n";
+		print STDERR "EXTH replacing data: $type - $data - $hex\n";
 		$self->{TYPE}->[$i] = $type;
 		$self->{DATA}->[$i] = $data;
 		$found = 1;

@@ -13,10 +13,12 @@ sub new {
 	ADDCOVERLINK => 0,
 	TOCFIRST => 0,
 	COVERIMAGE => "",
+	THUMBIMAGE => "",
 	AUTHOR => "",
 	TITLE => "",
 	PREFIXTITLE => "",
 	NOIMAGES => 0,
+	FIXHTMLBR => 0,
 	@_
     }, $class;
     $obj->initialize_from_file ($data) if defined $data;
@@ -50,6 +52,16 @@ sub cover_image {
 	$self->{COVERIMAGE} = $val;
     } else {
 	return $self->{COVERIMAGE};
+    }
+}
+
+sub thumb_image {
+    my $self = shift;
+    my $val = shift;
+    if (defined $val) {
+	$self->{THUMBIMAGE} = $val;
+    } else {
+	return $self->{THUMBIMAGE};
     }
 }
 

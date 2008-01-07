@@ -267,6 +267,10 @@ sub parse_guide {
 			$self->set_toc_href ($c->{"attributes"}->{"href"});
 			print STDERR "TOCHREF: ", $self->get_toc_href (), "\n";
 		    }
+		    if ($type eq "other.ms-coverimage-standard") {
+			my $href = $c->{"attributes"}->{"href"};
+			$self->set_cover_image ($href);
+		    }
 		}
 	    }
 	    return;

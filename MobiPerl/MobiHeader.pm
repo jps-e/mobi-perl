@@ -246,12 +246,17 @@ sub get_extended_header_data {
 
     my $coffset = $self->get_cover_offset ();
     if ($coffset >= 0) {
-	$eh->set ("coveroffset", pack ("N", $coffset));
+##	my $data = pack ("N", $coffset);
+##	print STDERR "COFFSET:$coffset:$data:\n";
+	$eh->set ("coveroffset", $coffset);
     }
 
     my $toffset = $self->get_thumb_offset ();
     if ($toffset >= 0) {
-	$eh->set ("thumboffset", pack ("N", $toffset));
+##	my $data = pack ("N", $toffset);
+##	my $hex = MobiPerl::Util::iso2hex ($data);
+##	print STDERR "TOFFSET:$toffset:$hex\n";
+	$eh->set ("thumboffset", $toffset);
     }
 
 ##    $eh->set ("hasfakecover", pack ("N", 0));

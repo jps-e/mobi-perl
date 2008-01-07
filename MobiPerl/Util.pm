@@ -5,6 +5,7 @@ use strict;
 use GD;
 use Image::BMP;
 use Image::Size;
+use File::Copy;
 
 use HTML::TreeBuilder;
 
@@ -53,7 +54,7 @@ sub get_tree_from_opf {
     if ($config->title ()) {
 	$title = $config->title ();
     }
-    $title = $title = $config->prefix_title () . $title;
+    $title = $config->prefix_title () . $title;
     $config->title ($title);
 
     my $author = $opf->get_author ();
@@ -84,6 +85,7 @@ sub get_tree_from_opf {
 	    }
 	}
     }
+    print STDERR "Coverimage: $coverimage\n";
 
     my $html = HTML::Element->new('html');
     my $head = HTML::Element->new('head');
@@ -167,7 +169,7 @@ sub get_tree_from_opf {
 	my $filename = $opf->get_href ($id);
 	my $mediatype = $opf->get_media_type ($id);
 
-##	print STDERR "SPINE: adding $id - $filename - $mediatype\n";
+	print STDERR "SPINE: adding $id - $filename - $mediatype\n";
 
 	next unless ($mediatype =~ /text/); # only include text content
 
@@ -184,49 +186,53 @@ sub get_tree_from_opf {
 	    $tree->eof();
 	}
 
-###	check_for_links ($tree);
+	if ($config->{FIXHTMLBR}) {
+	    fix_html_br ($tree);
+	}
+
 	$linksinfo->check_for_links ($tree);
 
 	print STDERR "Adding: $filename - $id\n";
 
-#	my $tree = $file_to_tree{$file};
-#	my $title = $file_to_title{$file};
-#	my $nameref = $file_to_nameref{$file};
-#	my $h2 = HTML::Element->new('h2');
-#	my $a = HTML::Element->new('a', name => "$nameref");
-#	$a->push_content ("$title");
-#	$h2->push_content ($a);
-#	$body->push_content ($h2);
-
-##	print STDERR "FILETOLINKCHECK:$filename:\n";
+#	print STDERR "FILETOLINKCHECK:$filename:\n";
 	if ($linksinfo->link_exists ($filename)) {
-##	    print STDERR "FILETOLINKCHECK:$filename: SUCCESS\n";
+#	    print STDERR "FILETOLINKCHECK:$filename: SUCCESS\n";
 	    my $a = HTML::Element->new('a', name => $filename);
 	    $body->push_content ($a);
 	}
-
+	print STDERR "+";
 	my $b = $tree->find ("body");
-	$body->push_content ($b->content_list());
+	print STDERR "+";
+	my @content = $b->content_list();
+	print STDERR "+";
+	foreach my $c (@content) {
+	    $body->push_content ($c);
+#	    print STDERR $c;
+	    print STDERR ".";
+	}
+	print STDERR "+";
     }
-
-    #
-    # Check if no images in document and include cover image if it exists
-    #
+    print STDERR "All spine elements have been added\n";
 
     if ($config->cover_image ()) {
 	$coverimage = $config->cover_image ();
     }
 
-    if ($linksinfo->get_n_images () == 0) {
+    if ($coverimage) {
+	copy ("../$coverimage", $coverimage); # copy if specified --coverimage
+	$linksinfo->add_cover_image ($coverimage);
+	if ($config->add_cover_link ()) {
+	    my $el = HTML::Element->new ('img', src => "$coverimage");
+	    $coverimageel->push_content ($el);
+	    $linksinfo->check_for_links ($coverimageel);
+	}
+    }
+
+    if ($config->thumb_image ()) {
+	$linksinfo->add_thumb_image ($config->thumb_image ());
+    } else {
 	if ($coverimage) {
-	    print STDERR "NO IMAGES IN BOOK: Adding cover image: $coverimage\n";
-	    $linksinfo->add_image_link ($coverimage);
-####	    $record_index++;
-####	    $record_to_image_file{$record_index} = $coverimage;
-	    if ($config->add_cover_link ()) {
-		my $el = HTML::Element->new ('img', recindex => "00001");
-		$coverimageel->push_content ($el);
-	    }
+	    $linksinfo->add_thumb_image ($coverimage);
 	}
     }
 
@@ -602,6 +608,47 @@ sub fix_html {
 	    print STDERR "+";
 	}
     }
+}
+
+sub fix_html_br {
+    my $tree = shift;
+
+    print STDERR "FIX HTML BR\n";
+
+    #
+    # Fix strange HTML code with <br /><br /> instead if <p>
+    #
+
+    my $b = $tree->find ("body");
+    print STDERR "+";
+    my @content = $b->content_list();
+    print STDERR "+";
+    my @paras = ();
+    my $p = HTML::Element->new("p");
+    push @paras, $p;
+    my $i = 0;
+    while ($i <= $#content) {
+##	print STDERR "+";
+	my $c = $content[$i];
+	if (ref($c) eq "HTML::Element") {
+	    my $tag = $c->tag;
+	    if ($tag eq "br" and ref($c) eq "HTML::Element" and
+		defined $content[$i+1] and $content[$i+1]->tag eq "br") {
+		$p = HTML::Element->new("p");
+		push @paras, $p;
+		$i++;
+##		print STDERR "P";
+	    } else {
+		$p->push_content ($c);
+	    }
+##	    print STDERR "TAG:$tag:\n";
+	} else {
+	    $p->push_content ($c);
+	}
+	$i++;
+    }
+    $b->delete_content ();
+    $b->push_content (@paras);
 }
 
 sub fix_pre_tags {

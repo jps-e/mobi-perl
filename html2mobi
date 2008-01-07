@@ -29,11 +29,11 @@ use Getopt::Mixed;
 use strict;
 
 use vars qw ($opt_title $opt_author $opt_htmlfile $opt_mobifile $opt_gentoc
-	     $opt_coverimage $opt_noimages $opt_addcoverlink
+	     $opt_coverimage $opt_addthumbnail $opt_noimages $opt_addcoverlink
 	     $opt_prefixtitle);
 
 Getopt::Mixed::getOptions ("title=s author=s htmlfile=s mobifile=s gentoc
-                            coverimage=s noimages addcoverlink
+                            coverimage=s addthumbnail=s noimages addcoverlink
                             prefixtitle=s");
 
 #
@@ -70,10 +70,11 @@ my $mobifile = "t.mobi";
 my $config = new MobiPerl::Config;
 $config->add_cover_link (1) if defined $opt_addcoverlink;
 $config->no_images (1) if defined $opt_noimages;
-$config->cover_image ($opt_coverimage);
+$config->cover_image ($opt_coverimage) if defined $opt_coverimage;
+$config->thumb_image ($opt_addthumbnail) if defined $opt_addthumbnail;
 $config->author ("Unspecified Author");
 $config->author ($opt_author) if defined $opt_author;
-$config->title ($opt_title);
+$config->title ($opt_title) if defined $opt_title;
 $config->prefix_title ($opt_prefixtitle);
 
 
@@ -130,13 +131,53 @@ sub one_html_file {
 	$config->title ($titleelement->as_trimmed_text ());
     }
 
+##    print STDERR "T:", $config->title (), ":\n";
     if (not $config->title ()) {
 	my $title = $filename;
 	$title =~ s/\.html//;
 	$title =~ s/\.htm//;
+	print STDERR "Setting title from filename: $title\n";
 	$config->title ($title);
     }
 
+    my $title = $config->prefix_title () . $config->title ();
+    $config->title ($title);
+
+    my $coverimage = "";
+    if ($config->cover_image ()) {
+	$coverimage = $config->cover_image ();
+    }
+
+    if ($coverimage) {
+	$linksinfo->add_cover_image ($coverimage);
+	if ($config->add_cover_link ()) {
+	    my $coverp = HTML::Element->new('p', 
+					    id=>"addedcoverlink",
+					    align=>"center");
+	    my $coverimageel = HTML::Element->new('a', 
+						  onclick => 
+						  "document.goto_page_relative(1)");
+	    $coverp->push_content ($coverimageel);
+	    my $el = HTML::Element->new ('img', src => "$coverimage");
+	    $coverimageel->push_content ($el);
+
+	    my $body = $tree->find ("body");
+	    if ($body) {
+		print STDERR "Adding cover link: $coverimage\n";
+		$body->unshift_content ($coverp);
+	    }
+	    $linksinfo->check_for_links ($tree);
+	}
+    }
+
+    if ($config->thumb_image ()) {
+	$linksinfo->add_thumb_image ($config->thumb_image ());
+    } else {
+	if ($coverimage) {
+	    $linksinfo->add_thumb_image ($coverimage);
+	}
+    }
+    
     MobiPerl::Util::fix_pre_tags ($tree);
 
     # Fix links
@@ -326,7 +367,7 @@ html2mobi - A script to convert html files or a collection of html files
 
   html2mobi file.html
 
-  html2mobi file1.html file2.html ...
+  html2mobi file1.html file2.html ... (not tested so much...)
 
 =head1 DESCRIPTION
 
@@ -363,13 +404,17 @@ useful for debugging.
 
 =item B<--coverimage IMAGE>
 
-The image to be used as cover in a library listing like the one in
-Cybook Gen3. The image will be rescaled to a suitable format (180x240).
-If no image is specified the first image in the source files is used.
+The image to be used as cover image.
+
+=item B<--addthumbnail IMAGE>
+
+The image to be used as tumb nail. If this flag is not used the specified
+cover image is used.
 
 =item B<--addcoverlink>
 
-Add link to cover image first in main document.
+Add link to cover image first in main HTML document. This requires the
+--coverimage flag.
 
 =item B<--gentoc>
 

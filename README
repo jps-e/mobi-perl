@@ -1,3 +1,8 @@
+Changes in 0.0.22:
+
+- Fixed so that flags --coverimage, --addthumbnail, --addcoverlink
+  works for html2mobi and lit2mobi.
+
 Changes in 0.0.21:
 
 - Added detection of images that are to large in mobi2mobi

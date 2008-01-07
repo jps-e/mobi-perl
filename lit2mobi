@@ -31,13 +31,14 @@ use Getopt::Mixed;
 use File::Copy;
 
 use vars qw ($opt_title $opt_author $opt_htmlfile $opt_mobifile
-	     $opt_coverimage $opt_noimages
+	     $opt_coverimage $opt_addthumbnail $opt_noimages
 	     $opt_tocfirst $opt_addcoverlink
-	     $opt_prefixtitle $opt_fixhtml);
+	     $opt_prefixtitle $opt_fixhtml $opt_fixhtmlbr);
 
 Getopt::Mixed::getOptions ("title=s author=s htmlfile=s mobifile=s
-                            coverimage=s noimages tocfirst addcoverlink
-                            prefixtitle=s fixhtml");
+                            coverimage=s addthumbnail=s 
+                            noimages tocfirst addcoverlink
+                            prefixtitle=s fixhtml fixhtmlbr");
 
 
 
@@ -62,6 +63,7 @@ $config->cover_image ($opt_coverimage);
 $config->author ($opt_author);
 $config->title ($opt_title);
 $config->prefix_title ($opt_prefixtitle);
+$config->{FIXHTMLBR} = 1 if defined $opt_fixhtmlbr;
 
 MobiPerl::Util::unpack_lit_file ($filename, "ctmp");
 
@@ -82,7 +84,9 @@ chdir "ctmp";
 
 my $linksinfo = new MobiPerl::LinksInfo;
 
+print STDERR "Read in HTML tree from opf\n";
 my $tree = MobiPerl::Util::get_tree_from_opf ($opffile, $config, $linksinfo);
+print STDERR "Have Read in HTML tree from opf\n";
 
 if (defined $opt_fixhtml) {
     MobiPerl::Util::fix_html ($tree);
@@ -140,9 +144,19 @@ opf file. This value is stored in the EXTH part of record 0.
 
 Name of the output file. This overrides the default value.
 
+=item B<--coverimage IMAGE>
+
+Use IMAGE as cover image instead of possible image found in opf directory.
+
+=item B<--addthumbnail IMAGE>
+
+The image to be used as tumb nail. If this flag is used the cover 
+image is used instead.
+
 =item B<--addcoverlink>
 
-Add link to cover image first in main document.
+Add link to cover image first in main HTML document. Also add entry
+"Cover" in guide that jumps to the cover image in the HTML document.
 
 =item B<--tocfirst>
 
