@@ -5,11 +5,16 @@ use lib "$RealBin";
 
 use strict;
 
-my %typename_to_type = ("author" => 100,
+my %typename_to_type = ("drm_server_id" => 1,
+			"drm_commerse_id" => 2,
+			"drm_ebookbase_book_id" => 3,
+			"author" => 100,
 			"publisher" => 101,
 			"imprint" => 102,
+			"abstract" => 103,
 			"subject" => 105,
 			"publishingdate" => 106,
+			"113" => 113,
 			"coveroffset" => 201,
 			"thumboffset" => 202,
 			"hasfakecover" => 203,
@@ -17,10 +22,11 @@ my %typename_to_type = ("author" => 100,
 			"205"          => 205,
 			"206"          => 206,
 			"207"          => 207,
-			"401"          => 401,
+			"401"          => 401,  # varies in size 1 or 4 seend
 			"403"          => 403,
 			"501"          => 501,
 			"502"          => 502,
+			"503"          => 503,
 			);
 
 my %type_to_desc = (1 => "drm_server_id",
@@ -29,6 +35,7 @@ my %type_to_desc = (1 => "drm_server_id",
 		   100 => "Author",
 		   101 => "Publisher",
 		   102 => "Imprint",
+		   103 => "Abstact",
 		   104 => "ISBN",
 		   105 => "Subject",
 		   106 => "PublishingDate",
@@ -67,7 +74,6 @@ my %format = (114 => 4,
 	      205 => 4,
 	      206 => 4,
 	      207 => 4,
-	      401 => 4,
 	      403 => 1);
 
 
@@ -205,10 +211,10 @@ sub initialize_from_data {
 	    }
 	}
     }
-##    open EXTH0, ">exth0";
-##    print EXTH0 substr ($data, 0, $len);
-##    open EXTH1, ">exth1";
-##    print EXTH1 $self->get_data ();
+    open EXTH0, ">exth0";
+    print EXTH0 substr ($data, 0, $len);
+    open EXTH1, ">exth1";
+    print EXTH1 $self->get_data ();
 }
 
 sub get_data {

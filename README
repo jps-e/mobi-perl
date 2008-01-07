@@ -1,3 +1,10 @@
+Changes in 0.0.23:
+
+- Item 401 in EXTH can be 1 or 4 butes according to examples (awz files).
+  Removed assumption that it was 4 bytes to get mobi2mobi to work for
+  an example file.
+
+
 Changes in 0.0.22:
 
 - Fixed so that flags --coverimage, --addthumbnail, --addcoverlink
