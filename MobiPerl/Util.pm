@@ -21,6 +21,7 @@ sub is_cover_image {
     my $p = new GD::Image ($file);
     if (not defined $p) {
 	print STDERR "Could not read image file: $file\n";
+	return $res;
     }
     my ($x, $y) = $p->getBounds();
 #    my $x = $p->width;

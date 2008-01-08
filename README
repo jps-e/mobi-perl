@@ -1,3 +1,11 @@
+Changes in 0.0.24:
+
+- Added flag --boktype to mobi2mobi to change the booktype value.
+  2 = BOOK (default), 257 = NEWS (Wall Street Journal as this value)
+
+- Added flag --delexthtype that can be used to remove type
+  mobi2mobi file.awz --outfile t.mobi --delexthtype cdetype
+
 Changes in 0.0.23:
 
 - Item 401 in EXTH can be 1 or 4 butes according to examples (awz files).

@@ -58,11 +58,12 @@ use strict;
 use vars qw ($opt_outfile $opt_title $opt_prefixtitle $opt_author 
              $opt_publisher $opt_databasename $opt_fiximagesizes
 	     $opt_addthumbnail $opt_coverimage $opt_patch $opt_coveroffset
-	     $opt_exthtype $opt_exthdata);
+	     $opt_exthtype $opt_exthdata $opt_booktype
+	     $opt_delexthtype);
 
 Getopt::Mixed::getOptions ("outfile=s title=s prefixtitle=s author=s 
                             publisher=s databasename=s patch fiximagesizes
-                            exthtype=s exthdata=s
+                            exthtype=s exthdata=s delexthtype=s booktype=s
                             addthumbnail=s coverimage=s coveroffset=s");
 
 my $filename = shift;
@@ -244,6 +245,11 @@ if (defined $opt_outfile) {
 	    $mh = MobiPerl::MobiHeader::set_extended_title ($mh, $opt_title);
 	}
 
+	if (defined $opt_booktype) {
+	    print STDERR "Setting new booktype: $opt_booktype\n";
+	    $mh = MobiPerl::MobiHeader::set_booktype ($mh, $opt_booktype);
+	}
+
 	if (defined $opt_prefixtitle) {
 	    my $title = MobiPerl::MobiHeader::get_extended_title ($mh);
 	    $title = $opt_prefixtitle . $title;
@@ -261,6 +267,10 @@ if (defined $opt_outfile) {
 
 	if (defined $opt_exthtype and defined $opt_exthdata) {
 	    $mh = MobiPerl::MobiHeader::set_exth_data ($mh, "$opt_exthtype", $opt_exthdata);
+	}
+
+	if (defined $opt_delexthtype) {
+	    $mh = MobiPerl::MobiHeader::set_exth_data ($mh, "$opt_delexthtype", undef);
 	}
 	
 	$r0->{"data"} = $palmdocheader . $mh;
@@ -328,9 +338,11 @@ sub parse_mobi_header {
 	print "MOBIHEADER   ciptr: $ciptr\n";
     }
 
+    my $typedesc = MobiPerl::MobiHeader::get_booktype_desc ($type);
+
     print "MOBIHEADER doctype: $doctype\n";
     print "MOBIHEADER  length: $length\n";
-    print "MOBIHEADER    type: $type\n";
+    print "MOBIHEADER bookype: $type - $typedesc\n";
     print "MOBIHEADER   codep: $codepage\n";
     print "MOBIHEADER  uniqid: $uniqueid\n";
     print "MOBIHEADER     ver: $ver\n";

@@ -5,16 +5,23 @@ use lib "$RealBin";
 
 use strict;
 
+# 400-499 application binary
+# 500-599 application string
+
 my %typename_to_type = ("drm_server_id" => 1,
-			"drm_commerse_id" => 2,
+			"drm_commerce_id" => 2,
 			"drm_ebookbase_book_id" => 3,
 			"author" => 100,
 			"publisher" => 101,
 			"imprint" => 102,
 			"abstract" => 103,
+			"isbn" => 104,
 			"subject" => 105,
 			"publishingdate" => 106,
-			"113" => 113,
+			"subjectcode" => 110,
+			"asin" => 113,
+			"versionnumber" => 114,
+			"sample" => 115,
 			"coveroffset" => 201,
 			"thumboffset" => 202,
 			"hasfakecover" => 203,
@@ -22,38 +29,47 @@ my %typename_to_type = ("drm_server_id" => 1,
 			"205"          => 205,
 			"206"          => 206,
 			"207"          => 207,
-			"401"          => 401,  # varies in size 1 or 4 seend
+			"clippinglimit" => 401,  # varies in size 1 or 4 seend
+			"publisherlimit" => 402,
 			"403"          => 403,
-			"501"          => 501,
-			"502"          => 502,
-			"503"          => 503,
+			"cdetype"      => 501,
+			"lastupdatetime" => 502,
+			"updatedtitle"   => 503,
 			);
 
 my %type_to_desc = (1 => "drm_server_id",
-		   2 => "drm_commerce_id",
-		   3 => "drm_ebookbase_book_id",
-		   100 => "Author",
-		   101 => "Publisher",
-		   102 => "Imprint",
-		   103 => "Abstact",
-		   104 => "ISBN",
-		   105 => "Subject",
-		   106 => "PublishingDate",
-		   107 => "Review",
-		   108 => "Contributor",
-		   109 => "Rights",
-		   110 => "SubjectCode",
-		   111 => "Type",
-		   112 => "Source",
-		   113 => "ASIN",
-		   114 => "VersionNumber",
-		   115 => "Sample",
-		   116 => "StartReading",
-		   201 => "CoverOffset",
-		   202 => "ThumbOffset",
-		   203 => "hasFakeCover");
+		    2 => "drm_commerce_id",
+		    3 => "drm_ebookbase_book_id",
+		    100 => "Author",
+		    101 => "Publisher",
+		    102 => "Imprint",
+		    103 => "Abstact",
+		    104 => "ISBN",
+		    105 => "Subject",
+		    106 => "PublishingDate",
+		    107 => "Review",
+		    108 => "Contributor",
+		    109 => "Rights",
+		    110 => "SubjectCode",
+		    111 => "Type",
+		    112 => "Source",
+		    113 => "ASIN",
+		    114 => "VersionNumber",
+		    115 => "Sample",
+		    116 => "StartReading",
+		    201 => "CoverOffset",
+		    202 => "ThumbOffset",
+		    203 => "hasFakeCover",
+		    401 => "ClippingLimit",
+		    402 => "PublisherLimit",
+		    501 => "CDEContentType",
+		    502 => "LastUpdateTime",
+		    503 => "UpdatedTitle",
+		    504 => "cDEContentKey",
+		    );
 
 my %binary_data = (114 => 1,
+		   115 => 1,
 		   201 => 1,
 		   202 => 1,
 		   203 => 1,
@@ -227,6 +243,7 @@ sub get_data {
     foreach my $i (0..$#type) {
 	my $type = $type[$i];
 	my $data = $data[$i];
+	next unless defined $data; # remove type...
 	if (defined $format{$type}) {
 	    my $len = $format{$type};
 	    if ($len == 4) {

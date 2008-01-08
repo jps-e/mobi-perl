@@ -100,6 +100,20 @@ my %langmap = ("en-us" => 0x0409,
 	       "en"    => 0x0009,
 	       "en-gb" => 0x0809);
 
+my %booktypedesc = (2 => "BOOK",
+		    3 => "PALMDOC",
+		    4 => "AUDIO",
+		    257 => "NEWS",
+		    258 => "NEWS_FEED",
+		    259 => "NEWS_MAGAZINE",
+		    513 => "PICS",
+		    514 => "WORD",
+		    515 => "XLS",
+		    516 => "PPT",
+		    517 => "TEXT",
+		    518 => "HTML",
+		   );
+
 sub new {
     my $this = shift;
     my $class = ref($this) || $this;
@@ -388,13 +402,26 @@ sub set_extended_title {
 }
 
 
+sub set_booktype {
+    my $mh = shift;
+    my $len = length ($mh);
+    my $type = shift;
+    substr ($mh, 0x08, 4, pack ("N", $type));
+    return $mh;
+}
+
+
 sub set_exth_data {
     my $h = shift;
     my $len = length ($h);
     my $type = shift;
     my $data = shift;
     my $res = $h;
-    print STDERR "Setting extended header data: $type - $data\n";
+    if (defined $data) {
+	print STDERR "Setting extended header data: $type - $data\n";
+    } else {
+	print STDERR "Deleting extended header data of type: $type\n";
+    }
 
     my ($doctype, $length, $htype, $codepage, $uniqueid, $ver) =
 	unpack ("a4NNNNN", $h);
@@ -455,6 +482,16 @@ sub fix_pointers {
     }
     return $mh;
 }
+
+sub get_booktype_desc {
+    my $type = shift;
+    my $res = $type;
+    if (defined $booktypedesc{$type}) {
+	$res = $booktypedesc{$type};
+    }
+    return $res;
+}
+
 
 
 return 1;
