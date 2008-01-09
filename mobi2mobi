@@ -334,19 +334,25 @@ sub parse_mobi_header {
 
     if ($ver > 3) {
 	my ($ciflg, $ciptr) = unpack ("nn", substr ($data, 0xb0));
-	print "MOBIHEADER   ciflg: $ciflg\n";
-	print "MOBIHEADER   ciptr: $ciptr\n";
+	print "MOBIHEADER    ciflg: $ciflg\n";
+	print "MOBIHEADER    ciptr: $ciptr\n";
     }
 
-    my $typedesc = MobiPerl::MobiHeader::get_booktype_desc ($type);
+    my $langcode = MobiPerl::MobiHeader::get_mh_language_code ($data);
+    my $lid = $langcode & 0xFF;
+    my $sublid = ($langcode >> 10) & 0xFF;
 
-    print "MOBIHEADER doctype: $doctype\n";
-    print "MOBIHEADER  length: $length\n";
-    print "MOBIHEADER bookype: $type - $typedesc\n";
-    print "MOBIHEADER   codep: $codepage\n";
-    print "MOBIHEADER  uniqid: $uniqueid\n";
-    print "MOBIHEADER     ver: $ver\n";
-    print "MOBIHEADER exthflg: $exthflg\n";
+    my $typedesc = MobiPerl::MobiHeader::get_booktype_desc ($type);
+    my $langdesc = MobiPerl::MobiHeader::get_language_desc ($langcode);
+
+    print "MOBIHEADER  doctype: $doctype\n";
+    print "MOBIHEADER   length: $length\n";
+    print "MOBIHEADER booktype: $type - $typedesc\n";
+    print "MOBIHEADER    codep: $codepage\n";
+    print "MOBIHEADER   uniqid: $uniqueid\n";
+    print "MOBIHEADER      ver: $ver\n";
+    print "MOBIHEADER  exthflg: $exthflg\n";
+    print "MOBIHEADER language: $langcode - $lid - $sublid - $langdesc\n";
 
     if ($exthflg & 0x40) {
 	my $exth = substr ($data, $length);

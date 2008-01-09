@@ -14,14 +14,20 @@ my %typename_to_type = ("drm_server_id" => 1,
 			"author" => 100,
 			"publisher" => 101,
 			"imprint" => 102,
-			"abstract" => 103,
+			"description" => 103,
 			"isbn" => 104,
 			"subject" => 105,
 			"publishingdate" => 106,
+			"review" => 107,
+			"contributor" => 108,
+			"rights" => 109,
 			"subjectcode" => 110,
+			"type" => 111,
+			"source" => 112,
 			"asin" => 113,
 			"versionnumber" => 114,
 			"sample" => 115,
+			"startreading" => 116,
 			"coveroffset" => 201,
 			"thumboffset" => 202,
 			"hasfakecover" => 203,
@@ -43,7 +49,7 @@ my %type_to_desc = (1 => "drm_server_id",
 		    100 => "Author",
 		    101 => "Publisher",
 		    102 => "Imprint",
-		    103 => "Abstact",
+		    103 => "Description",
 		    104 => "ISBN",
 		    105 => "Subject",
 		    106 => "PublishingDate",
@@ -199,14 +205,14 @@ sub initialize_from_data {
 	my ($type, $size, $content) = unpack ("NNa$contlen", substr ($data, $pos));
 	if (defined $format{$type}) {
 	    my $len = $format{$type};
-	    print STDERR "TYPE:$type:$len\n";
+##	    print STDERR "TYPE:$type:$len\n";
 	    if ($len == 4) {
 		($type, $size, $content) = unpack ("NNN", substr ($data, $pos));
-		print STDERR "CONT:$content\n";
+##		print STDERR "CONT:$content\n";
 	    }
 	    if ($len == 1) {
 		($type, $size, $content) = unpack ("NNC", substr ($data, $pos));
-		print STDERR "CONT:$content\n";
+##		print STDERR "CONT:$content\n";
 	    }
 	}
 	push @{$self->{TYPE}}, $type;

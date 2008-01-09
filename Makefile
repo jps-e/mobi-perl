@@ -1,5 +1,5 @@
 
-FILEPREFIX = mobiperl-0.0.24
+FILEPREFIX = mobiperl-0.0.25
 TARFILE =$(FILEPREFIX).tar
 RARFILE =$(FILEPREFIX)-win.rar
 
@@ -37,7 +37,7 @@ dist:
 
 
 copy:
-	scp $(TARFILE) html/*.html index.html remote.ida.liu.se:www-pub/mobiperl/downloads/
+	scp $(TARFILE) remote.ida.liu.se:www-pub/mobiperl/downloads/
 	scp html/*.html index.html remote.ida.liu.se:www-pub/mobiperl/
 
 copyhtml:
