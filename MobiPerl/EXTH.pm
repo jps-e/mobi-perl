@@ -233,10 +233,10 @@ sub initialize_from_data {
 	    }
 	}
     }
-    open EXTH0, ">exth0";
-    print EXTH0 substr ($data, 0, $len);
-    open EXTH1, ">exth1";
-    print EXTH1 $self->get_data ();
+#    open EXTH0, ">exth0";
+#    print EXTH0 substr ($data, 0, $len);
+#    open EXTH1, ">exth1";
+#    print EXTH1 $self->get_data ();
 }
 
 sub get_data {

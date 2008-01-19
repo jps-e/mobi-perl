@@ -375,7 +375,7 @@ sub scale_gd_image {
 #    my $h0 = $im->height;
     my $w1 = $w0*$x;
     my $h1 = $h0*$x;
-##    print STDERR "SCALE GD: $w0 $h0 $w1 $h1\n";
+    print STDERR "SCALE GD: $w0 $h0 -> $w1 $h1\n";
     if (defined $y) {
 	$w1 = $x;
 	$h1 = $y;
@@ -456,6 +456,7 @@ sub get_image_data {
 
     my $maxsize = 61000;
     my $maxwidth = 480;
+    my $maxheight = 640;
 
     my $data = "";
 
@@ -463,14 +464,15 @@ sub get_image_data {
 	print STDERR "Image file does not exist: $filename\n";
 	return $data;
     }
-    print STDERR "Reading data from file: $filename\n";
 
     my $filesize = -s $filename;
     my ($x, $y) = imgsize ($filename);
 
+    print STDERR "Reading data from file: $filename - $x x $y\n";
+
     if ($filesize < $maxsize and $x < $maxwidth) {
 	# No transformation has to be done, keep data as is
-	print STDERR "No transformation: $filename\n";
+	print STDERR "No transformation: $filename - $x x $y\n";
 	open(IMG, $filename) or die "can't open $filename: $!";
 	binmode(IMG);       # now DOS won't mangle binary input from GIF
 	my $buff;
@@ -516,11 +518,18 @@ sub get_image_data {
     #
 
     if ($rescale_large_images) {
-	if ($x > 480) {
-	    # width might be the problem...
-	    my $scale = 480.0/$x; # 0.99 does not work, 480x640 works
-	    $p = MobiPerl::Util::scale_gd_image ($p, $scale);
-##	    $p = MobiPerl::Util::scale_gd_image ($p, 600, 810);
+	my $xdiff = $x-$maxwidth;
+	my $ydiff = $y-$maxheight;
+	if ($ydiff > $xdiff) {
+	    if ($y > $maxheight) {
+		my $scale = $maxheight*1.0/$y;
+		$p = MobiPerl::Util::scale_gd_image ($p, $scale);
+	    }
+	} else {
+	    if ($x > $maxwidth) {
+		my $scale = $maxwidth*1.0/$x;
+		$p = MobiPerl::Util::scale_gd_image ($p, $scale);
+	    }
 	}
     }
 
@@ -672,7 +681,7 @@ sub fix_pre_tags {
 	    my $br = HTML::Element->new("br");
 	    $line =~ s/\s/&nbsp\;/g;
 
-	    print STDERR $line;
+##	    print STDERR $line;
 	    $p->push_content ($line);
 	    $p->push_content ($br);
 	    $p->push_content ("\n");

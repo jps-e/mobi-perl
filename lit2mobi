@@ -88,6 +88,8 @@ print STDERR "Read in HTML tree from opf\n";
 my $tree = MobiPerl::Util::get_tree_from_opf ($opffile, $config, $linksinfo);
 print STDERR "Have Read in HTML tree from opf\n";
 
+MobiPerl::Util::fix_pre_tags ($tree);
+
 if (defined $opt_fixhtml) {
     MobiPerl::Util::fix_html ($tree);
 }

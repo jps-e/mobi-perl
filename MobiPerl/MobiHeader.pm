@@ -622,37 +622,44 @@ sub set_exth_data {
 	unpack ("a4NNNNN", $h);
 
     my ($exthflg) = unpack ("N", substr ($h, 0x70));
+
+    my $exth = substr ($h, $length);
+    my $prefix = substr ($h, 0, $length);
+    my $suffix;
+    my $eh;
+    my $exthlen = 0;
     if ($exthflg & 0x40) {
-	my $exth = substr ($h, $length);
-	my ($doctype, $exthlen, $n_items) = unpack ("a4NN", $exth);
-	my $prefix = substr ($h, 0, $length);
-	my $suffix = substr ($exth, $exthlen);
-
-	my $eh = new MobiPerl::EXTH ($exth);
-	$eh->set ($type, $data);
-	print STDERR "GETSTRING: ", $eh->get_string ();
-
-	#
-	# Fix DRM and TITLE info pointers...
-	#
-
-	my $exthdata = $eh->get_data ();
-
-	my $diff = length ($exthdata)-$exthlen;
-	if ($diff <= 0) {
-	    foreach ($diff .. -1) {
-		$exthdata .= pack ("C", 0);
-		$diff++;
-	    }
-	}
-
-	$res = $prefix . $exthdata . $suffix;
-
-	$res = fix_pointers ($res, $length, $diff);
-
+	my ($doctype, $exthlen1, $n_items) = unpack ("a4NN", $exth);
+	$exthlen = $exthlen1;
+	$suffix = substr ($exth, $exthlen);
+	$eh = new MobiPerl::EXTH ($exth);
     } else {
-	print STDERR "EXTH does not exist, data not set: $type - $data\n";
+	$eh = new MobiPerl::EXTH ();
+	$suffix = $exth;
+	substr ($prefix, 0x70, 4, pack ("N", $exthflg | 0x40));
     }
+    
+    $eh->set ($type, $data);
+    print STDERR "GETSTRING: ", $eh->get_string ();
+
+    #
+    # Fix DRM and TITLE info pointers...
+    #
+    
+    my $exthdata = $eh->get_data ();
+
+    my $diff = length ($exthdata)-$exthlen;
+    if ($diff <= 0) {
+	foreach ($diff .. -1) {
+	    $exthdata .= pack ("C", 0);
+	    $diff++;
+	}
+    }
+
+    $res = $prefix . $exthdata . $suffix;
+
+    $res = fix_pointers ($res, $length, $diff);
+
     return $res;
 }
 

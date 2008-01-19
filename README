@@ -1,3 +1,25 @@
+Changes in 0.0.26:
+
+- --prefixtitle now works for mobi2mobi and when input is a PalmDOC file.
+
+- Fixed bug with mobi2mobi and --coverimage. It did not work if the file
+  did not contain any images.
+
+- Fixed rescaling bug. Now also images whose height is greater than 640
+  are rescaled. This is done because of a bug in the Gen3.
+
+- Fixed bug in mobi2mobi --fiximagesizes. In Linux the wrong tmp file
+  was read.
+
+- Introduced a flag --gen3imagefix to mobi2mobi that can be used if you have
+  a book that hang the Gen3. These kind of hangings are often caused by
+  a large image in the book. This is a firmware bug in the Gen3.
+
+- Added call to fix_pre_tags in lit2mobi
+
+- Now it is possible to add author information to a Mobipocket file
+  that does not have an EXTH.
+
 Changes in 0.0.25:
 
 - Added all language codes and added info about language in mobi2mobi

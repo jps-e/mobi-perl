@@ -57,12 +57,14 @@ use strict;
 
 use vars qw ($opt_outfile $opt_title $opt_prefixtitle $opt_author 
              $opt_publisher $opt_databasename $opt_fiximagesizes
+	     $opt_gen3imagefix
 	     $opt_addthumbnail $opt_coverimage $opt_patch $opt_coveroffset
 	     $opt_exthtype $opt_exthdata $opt_booktype
 	     $opt_delexthtype);
 
 Getopt::Mixed::getOptions ("outfile=s title=s prefixtitle=s author=s 
                             publisher=s databasename=s patch fiximagesizes
+                            gen3imagefix
                             exthtype=s exthdata=s delexthtype=s booktype=s
                             addthumbnail=s coverimage=s coveroffset=s");
 
@@ -111,12 +113,13 @@ my @records = @{$pdb->{"records"}};
 my $firstimageid = 0;
 foreach my $r (@records) {
     my $data = $r->{"data"};
+    my $id = $r->{"id"};
+##    print "CECKING RECORD WITH ID: $id\n";
     my ($x, $y) = imgsize (\$data);
     if (defined $x) {
 	my $len = length ($data);
-	my $id = $r->{"id"};
 	if (not $firstimageid) {
-	    print "FIRST IMG Record $id\n";
+	    print "FIRST IMG Record Id: $id\n";
 	    $firstimageid = $id;
 	}
 	if ($len > 65535) {
@@ -138,18 +141,19 @@ print "---------------------------------------------------\n";
 #
 
 my $imgindex = 0;
+my $coverimageindex = 0;
 foreach my $r (@records) {
     my $data = $r->{"data"};
     my ($x, $y) = imgsize (\$data);
     if (defined $x) {
 	print "Image record index: $imgindex ($x x $y)\n";
+	$coverimageindex = $imgindex;
 	last;
     }
     $imgindex++;
 }
-print "IMAGE INDEX: $imgindex\n";
-
-my $coverimageindex = $imgindex;
+print "START IMAGE INDEX: $imgindex\n";
+print "COVER IMAGE INDEX: $coverimageindex\n";
 
 my $r0 = $records[0];
 
@@ -158,7 +162,7 @@ my $palmdocheader = substr ($r0->{"data"}, 0, 16);
 
 my $lastid = $records[$#records]->{"id"};
 
-##print "LASTID: $lastid\n";
+print "LASTID: $lastid\n";
 
 print "-----------------\n";
 
@@ -179,7 +183,28 @@ if (defined $opt_outfile) {
 		binmode IMG;
 		print IMG $data;
 		close IMG;
+		sleep (1); 
+# Why is this sleep needed? 
+# Without it the wrong file is usesd.
+# I there another way to ensure that the data ia available?
 		$r->{"data"} = MobiPerl::Util::get_image_data ("tmpimage");
+	    }
+	}
+    }
+
+    if (defined $opt_gen3imagefix) {
+	foreach my $r (@records) {
+	    my $data = $r->{"data"};
+	    my ($x, $y, $type) = imgsize (\$data);
+#	    if (defined $x and $type eq "JPG") {
+	    if (defined $x) {
+##		print STDERR "GEN3 image fix $type - $x x $y, shrinking image (maybe converting to gif is better...)\n";
+		open IMG, ">tmpimage";
+		binmode IMG;
+		print IMG $data;
+		close IMG;
+		sleep (1);
+		$r->{"data"} = MobiPerl::Util::get_image_data ("tmpimage", 1);
 	    }
 	}
     }
@@ -206,6 +231,7 @@ if (defined $opt_outfile) {
 	    $img->{"categori"} = 0;
 	    $img->{"attributes"}{"Dirty"} = 1;
 	    $lastid++;
+	    print "CREATING COVER IMAGE WITH ID: $lastid\n";
 	    $img->{"id"} = $lastid;
 	    my $data = MobiPerl::Util::get_image_data ($opt_coverimage, 1);
 	    $img->{"data"} = $data;
@@ -213,6 +239,7 @@ if (defined $opt_outfile) {
 	    my @records = @{$pdb->{"records"}};
 	    my $coverindex = $#records;
 	    $coveroffset = $coverindex-$imgindex;
+	    print "CREATING COVER IMAGE WITH COVEROFFSET: $coveroffset\n";
 	}
     }
 
@@ -282,8 +309,10 @@ if (defined $opt_outfile) {
 	$title =~ s/\.pdb$//;
 	$title =~ s/\.mobi$//;
 
+	$title = $opt_title if defined $opt_title;
+	$title = $opt_prefixtitle . $title if defined $opt_prefixtitle;
+
 	$mh->set_title ($title);
-	$mh->set_title ($opt_title) if defined $opt_title;
 	$mh->set_author ($opt_author) if defined $opt_author;
 	$mh->set_publisher ($opt_publisher) if defined $opt_publisher;
 	$mh->set_image_record_index ($imgindex);
@@ -491,13 +520,13 @@ be replaced.
 
 =item B<--fiximagesizes>
 
-Fix image sizes so that they are less then 61000 bytes and width less
-then 480.
+Fix image sizes so that they are less then 61000 bytes and rescale
+so they work on the Gen3.
 
-=item B<--fiximagesizes>
+=item B<--gen3imagefix>
 
-Fix image sizes so that they are less then 61000 bytes and width less
-then 480.
+Fix image sizes so that they are less then 61000 bytes and rescale
+so they work on the Gen3.
 
 =item B<--coveroffset OFFSET>
 
