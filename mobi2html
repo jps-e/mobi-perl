@@ -34,22 +34,28 @@ use MobiPerl::Util;
 
 use strict;
 
-use vars qw ($opt_rawhtml $opt_record0 $opt_saveallrecords);
+use vars qw ($opt_rawhtml $opt_record0 $opt_saveallrecords $opt_mobihtml);
 
-Getopt::Mixed::getOptions ("rawhtml record0 saveallrecords");
+Getopt::Mixed::getOptions ("rawhtml record0 saveallrecords mobihtml");
 
-my $filename = shift;
+my $fullpathfilename = shift;
 my $explodedir = shift;
+my $filename = $fullpathfilename;
+$filename =~ s!^.*/!!;
+$filename =~ s!^.*\\!!;
+
+print STDERR "FULLFILENAME: $fullpathfilename\n";
+print STDERR "FILENAME: $filename\n";
 
 die "A directory to exlode the mobi file must be specified as second argument"
     unless defined $explodedir;
 
-die "File does not exist: $filename" unless -e $filename;
+die "File does not exist: $fullpathfilename" unless -e $fullpathfilename;
 
 mkdir $explodedir;
 
 my $pdb = new Palm::PDB;
-$pdb->Load($filename);
+$pdb->Load($fullpathfilename);
 
 my $name = $pdb->{"name"};
 my $version = $pdb->{"version"};
@@ -65,11 +71,11 @@ print STDERR "Name: $name\n";
 print STDERR "Version: $version\n";
 print STDERR "Type: $type\n";
 print STDERR "Creator: $creator\n";
-print STDERR "Seed: $seed\n";
-print STDERR "Resdb: " . $pdb->{"attributes"}{"ResDB"} . "\n";
-print STDERR "AppInfoDirty: " . $pdb->{"attributes"}{"AppInfoDirty"} . "\n";
-print STDERR "ctime: $ctime - $sctime\n";
-print STDERR "mtime: $mtime - $smtime\n";
+##print STDERR "Seed: $seed\n";
+##print STDERR "Resdb: " . $pdb->{"attributes"}{"ResDB"} . "\n";
+##print STDERR "AppInfoDirty: " . $pdb->{"attributes"}{"AppInfoDirty"} . "\n";
+##print STDERR "ctime: $ctime - $sctime\n";
+##print STDERR "mtime: $mtime - $smtime\n";
 print STDERR "baktime: " . $pdb->{"baktime"} . "\n";
 
 my @records = @{$pdb->{"records"}};
@@ -88,7 +94,7 @@ foreach my $r (@records) {
 	my $filename = "record-$id";
 	my ($x, $y, $type) = imgsize(\$data);
 	if (defined $x) {
-	    print STDERR "Record $id - $cat - $offset - $size - $x x $ y\n";
+##	    print STDERR "Record $id - $cat - $offset - $size - $x x $ y\n";
 	    $image_index++;
 	    $image_index_to_filename{$image_index} = "$filename.$type";
 	    open DATA, ">$explodedir/$filename.$type";
@@ -184,7 +190,27 @@ $htmlfile =~ s/\.prc/.html/;
 $htmlfile =~ s/\.pdb/.html/;
 $htmlfile =~ s/\.azw/.html/;
 open HTML, ">$explodedir/$htmlfile" or die "Could not open file $explodedir/$htmlfile";
-print HTML $tree->as_HTML;
+
+my $html = $tree->as_HTML;
+
+if (not defined $opt_mobihtml) {
+    $html =~ s/<mbp:pagebreak\/>//g;
+    $html =~ s/<mbp:pagebreak>//g;
+    $html =~ s/<\/mbp:pagebreak>//g;
+    $html =~ s/<guide>.*?<\/guide>//g;
+    $html =~ s/<mbp:nu>//g;
+    $html =~ s/<\/mbp:nu>//g;
+    $html =~ s/<mbp:section>//g;
+    $html =~ s/<\/mbp:section>//g;
+    $html =~ s/<mbp:frameset>//g;
+    $html =~ s/<\/mbp:frameset>//g;
+    $html =~ s/<mbp:slave-frame>//g;
+    $html =~ s/<\/mbp:slave-frame>//g;
+
+    $html =~ s/ style="page-break-after:always"//g;
+}
+
+print HTML $html;
 close HTML;
 
 
@@ -195,7 +221,7 @@ sub fix_image_tags {
 	my $recindex = $img->attr ("recindex");
 	my $ind = int ($recindex);
 	my $filename = $image_index_to_filename{$ind};
-	print STDERR "FIX IMAGE TAGS: $recindex - $ind - $filename\n";
+##	print STDERR "FIX IMAGE TAGS: $recindex - $ind - $filename\n";
 	$img->attr ("recindex", undef);
 	$img->attr ("src", $filename);
     }
@@ -293,6 +319,12 @@ A script to explode a DRM-free MobiPocket file to html.
 =head1 OPTIONS
 
 =over 4
+
+=item B<--mobihtml>
+
+Do not remove MobiPocket specific HTML code. Should be used if you
+want to unpack a book and fix some problem and then pack it to a new
+MobiPocket file.
 
 =item B<--rawhtml>
 

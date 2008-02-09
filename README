@@ -1,3 +1,7 @@
+Changes in 0.0.27:
+
+- mobi2html now works with the mobi file specified with a full path
+
 Changes in 0.0.26:
 
 - --prefixtitle now works for mobi2mobi and when input is a PalmDOC file.

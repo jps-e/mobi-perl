@@ -1,7 +1,8 @@
 
-FILEPREFIX = mobiperl-0.0.26
+FILEPREFIX = mobiperl-0.0.27
 TARFILE =$(FILEPREFIX).tar
 RARFILE =$(FILEPREFIX)-win.rar
+ZIPFILE =$(FILEPREFIX)-win.zip
 
 
 PALMFILES = Palm/Doc.pm
@@ -67,6 +68,10 @@ mh:
 
 all:	hm om lm mm mh
 
+
 pack:
+	"c:\Program Files\7-ZIP\7z" -tzip a $(ZIPFILE) html2mobi.exe opf2mobi.exe lit2mobi.exe mobi2mobi.exe mobi2html.exe $(TARFILE)
+
+oldpack:
 	"c:\Program Files\WinRAR\rar" a $(RARFILE) html2mobi.exe opf2mobi.exe lit2mobi.exe mobi2mobi.exe mobi2html.exe $(TARFILE)
 

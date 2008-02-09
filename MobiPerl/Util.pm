@@ -470,7 +470,7 @@ sub get_image_data {
 
     print STDERR "Reading data from file: $filename - $x x $y\n";
 
-    if ($filesize < $maxsize and $x < $maxwidth) {
+    if ($filesize < $maxsize and $x < $maxwidth and $y<$maxheight) {
 	# No transformation has to be done, keep data as is
 	print STDERR "No transformation: $filename - $x x $y\n";
 	open(IMG, $filename) or die "can't open $filename: $!";
