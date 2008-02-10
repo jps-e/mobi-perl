@@ -277,6 +277,14 @@ sub get_toc_tree {
 	$file_to_title{$file} = $title;
 	$file_to_nameref{$file} = $name;
 
+
+	if (not $title) {
+	    # Not title tag in html file
+	    $title = $file;
+	    $title =~ s/\.html//i;
+	    $title =~ s/\.htm//i;
+	}
+
 	print STDERR "GETTOCTREETITLE: $title - $file - $name\n";
 	my $li = HTML::Element->new('li');
 	my $a = HTML::Element->new('a', href => "\#$name");

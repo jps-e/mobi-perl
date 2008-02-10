@@ -194,8 +194,10 @@ open HTML, ">$explodedir/$htmlfile" or die "Could not open file $explodedir/$htm
 my $html = $tree->as_HTML;
 
 if (not defined $opt_mobihtml) {
-    $html =~ s/<mbp:pagebreak\/>//g;
-    $html =~ s/<mbp:pagebreak>//g;
+    $html =~ s/<mbp:pagebreak\s*\//<br style=\"page-break-after:always\" \//g;
+    $html =~ s/<mbp:pagebreak\s*/<br style=\"page-break-after:always\" \//g;
+#    $html =~ s/<mbp:pagebreak>/<br style=\"page-break-after:always\"\/>/g;
+#    $html =~ s/<mbp:pagebreak>//g;
     $html =~ s/<\/mbp:pagebreak>//g;
     $html =~ s/<guide>.*?<\/guide>//g;
     $html =~ s/<mbp:nu>//g;
@@ -207,7 +209,8 @@ if (not defined $opt_mobihtml) {
     $html =~ s/<mbp:slave-frame>//g;
     $html =~ s/<\/mbp:slave-frame>//g;
 
-    $html =~ s/ style="page-break-after:always"//g;
+    $html =~ s/\/div>/\/div>\n/g;
+
 }
 
 print HTML $html;

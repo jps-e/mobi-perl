@@ -92,23 +92,22 @@ sub save_mobi_file {
     $mh->set_author ($author);
     $mh->set_image_record_index ($current_record_index);
 
-    $mh->set_cover_offset (0);
+    
+    #    $mh->set_cover_offset (0); # It crashes on Kindle if no cover is
+	                            # is available and offset is set to 0
     my $cover_offset = $linksinfo->get_cover_offset ();
     print STDERR "COVEROFFSET: $cover_offset\n";
-    if ($cover_offset >= 0) {
-	$mh->set_cover_offset ($cover_offset);
-    }
+    $mh->set_cover_offset ($cover_offset); # Set to -1 if no cover image
+
+#    if ($cover_offset >= 0) {
+#	$mh->set_cover_offset ($cover_offset);
+#    }
 
     my $thumb_offset = $linksinfo->get_thumb_offset ();
     print STDERR "THUMBOFFSET: $thumb_offset\n";
     if ($thumb_offset >= 0) {
 	$mh->set_thumb_offset ($thumb_offset);
     }
-
-
-#    $mh->set_thumb_offset (0);
-
-
 
 ##    my $codepage = 65001; # utf-8
 #    my $codepage = 1252; # westerner

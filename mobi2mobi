@@ -66,7 +66,8 @@ Getopt::Mixed::getOptions ("outfile=s title=s prefixtitle=s author=s
                             publisher=s databasename=s patch fiximagesizes
                             gen3imagefix
                             exthtype=s exthdata=s delexthtype=s booktype=s
-                            addthumbnail=s coverimage=s coveroffset=s");
+                            addthumbnail=s coverimage=s coveroffset=s
+                            ");
 
 my $filename = shift;
 
@@ -490,7 +491,10 @@ original files...
 
 =item B<--databasename NAME>
 
-Change the database name of the file (the first 31 characters in the file).
+Change the internal database name of the file (the first 31 characters
+in the file). This may be useful in conjunction with the oeb:redirect
+tag when creating mobi-format ebooks.
+
 
 =item B<--title TITLE>
 

@@ -1,6 +1,21 @@
+Changes in 0.0.28:
+
+- Fixed the substituion of mbp:pagebreak that was done wrongly
+
+- Added a newline after /dev> in mobi2html
+
+- Fixed bug in MobiFile pointed out by Gary Tsang. The cover offset
+  was set to 0 when no cover was available and that made the Kindle
+  reader crash.
+
+- Fixed html2mobi so that file name is used as title in generated toc
+  if no title tag is available.
+
 Changes in 0.0.27:
 
 - mobi2html now works with the mobi file specified with a full path
+
+- MobiPocket specific html removed in mobi2html. --mobihtml to keep it.
 
 Changes in 0.0.26:
 
