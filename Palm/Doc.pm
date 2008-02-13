@@ -110,6 +110,18 @@ sub _parse_headerrec($) {
 	my ($version,$spare,$ulen, $records, $recsize, $position)
 		= unpack( 'n n N n n N', $record->{'data'} );
 
+	my $h = sprintf ("%x", $version);
+	print STDERR "Version: $version - $h - ";
+	if ($version == DOC_COMPRESSED) {
+	    print STDERR " DOC_COMPRESSED\n";
+	}
+	if ($version == DOC_UNCOMPRESSED) {
+	    print STDERR " DOC_UNCOMPRESSED\n";
+	}
+	if ($version != DOC_UNCOMPRESSED and $version != DOC_COMPRESSED) {
+	    print STDERR " probably HUFFDIC_COMPRESSED - CANNOT BE DECOMPRESSED!!!\n";
+	}
+
 	# the header is followed by a list of record sizes. We don't use
 	# this since we can guess the sizes pretty easily by looking at
 	# the actual records.

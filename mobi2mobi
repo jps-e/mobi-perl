@@ -60,14 +60,52 @@ use vars qw ($opt_outfile $opt_title $opt_prefixtitle $opt_author
 	     $opt_gen3imagefix
 	     $opt_addthumbnail $opt_coverimage $opt_patch $opt_coveroffset
 	     $opt_exthtype $opt_exthdata $opt_booktype
-	     $opt_delexthtype);
+	     $opt_delexthtype $opt_mbpfile);
 
 Getopt::Mixed::getOptions ("outfile=s title=s prefixtitle=s author=s 
                             publisher=s databasename=s patch fiximagesizes
                             gen3imagefix
                             exthtype=s exthdata=s delexthtype=s booktype=s
                             addthumbnail=s coverimage=s coveroffset=s
+                            mbpfile=s
                             ");
+
+my $author = "";
+my $publisher = "";
+
+#
+# Read info from mbp file
+#
+
+if (defined $opt_mbpfile) {
+    open MBP, "<$opt_mbpfile" or die "Could not open $opt_mbpfile for reading: $!";
+    binmode MBP;
+    my $mbp = "";
+    {
+	undef $/;
+	$mbp = <MBP>;
+	print STDERR "LENGTH: ", length($mbp), "\n";
+    }
+    $author = get_mbp_data ("AUTH", $mbp);
+    my $cover = get_mbp_data ("COVE", $mbp);
+    my $abstract = get_mbp_data ("ABST", $mbp);
+    my $genre = get_mbp_data ("GENR", $mbp);
+    $publisher = get_mbp_data ("PUBL", $mbp);
+
+    print STDERR "Author: $author\n";
+    print STDERR "Cover: $cover\n";
+    print STDERR "Abstract: $abstract\n";
+    print STDERR "Genre: $genre\n";
+    print STDERR "Publiser: $publisher\n";
+}
+
+$author = $opt_author if defined $opt_author;
+$publisher = $opt_publisher if defined $opt_publisher;
+
+
+#
+# Read mobi file
+#
 
 my $filename = shift;
 
@@ -262,11 +300,11 @@ if (defined $opt_outfile) {
     if ($ismobi) {
 	my $mh = substr ($r0->{"data"}, 16);
 
-	if (defined $opt_author) {
-	    $mh = MobiPerl::MobiHeader::set_exth_data ($mh, "author", $opt_author);
+	if ($author) {
+	    $mh = MobiPerl::MobiHeader::set_exth_data ($mh, "author", $author);
 	}
-	if (defined $opt_publisher) {
-	    $mh = MobiPerl::MobiHeader::set_exth_data ($mh, "publisher", $opt_publisher);
+	if ($publisher) {
+	    $mh = MobiPerl::MobiHeader::set_exth_data ($mh, "publisher", $publisher);
 	}
 	if (defined $opt_title) {
 	    print STDERR "Setting new title: $opt_title\n";
@@ -314,8 +352,8 @@ if (defined $opt_outfile) {
 	$title = $opt_prefixtitle . $title if defined $opt_prefixtitle;
 
 	$mh->set_title ($title);
-	$mh->set_author ($opt_author) if defined $opt_author;
-	$mh->set_publisher ($opt_publisher) if defined $opt_publisher;
+	$mh->set_author ($author) if $author;
+	$mh->set_publisher ($publisher) if $publisher;
 	$mh->set_image_record_index ($imgindex);
 	$mh->set_thumb_offset ($thumboffset) if ($thumboffset >= 0);
 	$mh->set_cover_offset ($coveroffset) if ($coveroffset >= 0);
@@ -434,6 +472,20 @@ sub get_cover_image_data {
 
 }
 
+sub get_mbp_data {
+    my $key = shift;
+    my $data = shift;
+    my $res = "";
+    my $d = (split /$key/, $data)[-1];
+    if ($d and $d ne $data) {
+	my ($len) = unpack ("N", $d);
+	($len, $res) = unpack ("Na$len", $d);
+	# Looks like it. Longman mbp abstract has 2013, which is en dash in UTF-16.
+	$res =~ s/\0//g; # coding is probably UTF-16
+    }
+    return $res;
+}
+
 
 =pod
 
@@ -495,6 +547,10 @@ Change the internal database name of the file (the first 31 characters
 in the file). This may be useful in conjunction with the oeb:redirect
 tag when creating mobi-format ebooks.
 
+=item B<--mbpfile FILE>
+
+Use the author and publisher info in the mbp file and set these in the
+outfile. --author and --publisher overrides this information.
 
 =item B<--title TITLE>
 

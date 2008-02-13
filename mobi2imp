@@ -1,0 +1,481 @@
+#!/usr/bin/env perl
+
+#    mobi2imp, Copyright (C) 2008 Tommy Persson, tpe@ida.liu.se and
+#    Nick Rapallo, nrapallo@yahoo.ca
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+use FindBin qw($RealBin);
+use lib "$RealBin";
+
+use HTML::TreeBuilder;
+use Palm::PDB;
+use Palm::Doc;
+use Image::Size;
+use Date::Parse;
+use Date::Format;
+use Getopt::Mixed;
+
+use MobiPerl::EXTH;
+use MobiPerl::Util;
+
+#use strict;
+
+use vars qw ($opt_rawhtml $opt_record0 $opt_saveallrecords $opt_mobihtml);
+
+Getopt::Mixed::getOptions ("rawhtml record0 saveallrecords mobihtml");
+
+my $fullpathfilename = shift;
+my $explodedir = shift;
+
+###################################################################
+#For .IMP start (version 2 - 12 Feb 2008)
+#
+my $category = shift;
+my $author = shift;
+my $title = shift;
+my $usage = 'mobi2imp.pl Source.prc ExplodeDir [Category [Authorname [Title]]]';
+#
+#For .IMP end
+###################################################################
+
+my $filename = $fullpathfilename;
+$filename =~ s!^.*/!!;
+$filename =~ s!^.*\\!!;
+
+print STDERR "FULLFILENAME: $fullpathfilename\n";
+print STDERR "FILENAME: $filename\n";
+
+die "Usage:  $usage\nA directory to exlode the mobi file must be specified as second argument"
+    unless defined $explodedir;
+
+die "File does not exist: $fullpathfilename" unless -e $fullpathfilename;
+
+mkdir $explodedir;
+
+my $pdb = new Palm::PDB;
+$pdb->Load($fullpathfilename);
+
+my $name = $pdb->{"name"};
+my $version = $pdb->{"version"};
+my $type = $pdb->{"type"};
+my $creator = $pdb->{"creator"};
+my $seed = $pdb->{"uniqueIDseed"};
+my $ctime = $pdb->{"ctime"};
+my $mtime = $pdb->{"mtime"};
+my $sctime = ctime ($ctime);
+my $smtime = ctime ($mtime);
+
+print STDERR "Name: $name\n";
+print STDERR "Version: $version\n";
+print STDERR "Type: $type\n";
+print STDERR "Creator: $creator\n";
+##print STDERR "Seed: $seed\n";
+##print STDERR "Resdb: " . $pdb->{"attributes"}{"ResDB"} . "\n";
+##print STDERR "AppInfoDirty: " . $pdb->{"attributes"}{"AppInfoDirty"} . "\n";
+##print STDERR "ctime: $ctime - $sctime\n";
+##print STDERR "mtime: $mtime - $smtime\n";
+print STDERR "baktime: " . $pdb->{"baktime"} . "\n";
+
+my @records = @{$pdb->{"records"}};
+print STDERR "Number of record: " . $#records . "\n";
+
+
+my $image_index = 0;
+my %image_index_to_filename = ();
+
+foreach my $r (@records) {
+	my $id = $r->{"id"};
+	my $cat = $r->{"category"};
+	my $offset = $r->{"offset"};
+	my $data = $r->{"data"};
+	my $size = length ($data);
+	my $filename = "record-$id";
+	my ($x, $y, $type) = imgsize(\$data);
+	if (defined $x) {
+##	    print STDERR "Record $id - $cat - $offset - $size - $x x $ y\n";
+	    $image_index++;
+	    $image_index_to_filename{$image_index} = "$filename.$type";
+	    open DATA, ">$explodedir/$filename.$type";
+	    binmode (DATA);
+	    print DATA $data;
+	    close DATA;
+#	    print STDERR "SIZE: $x $y\n";
+	} else {
+	    if (defined $opt_record0 or defined $opt_saveallrecords) {
+		open DATA, ">$explodedir/$filename";
+		print DATA $data;
+		close DATA;
+	    }
+	}
+	if (defined $opt_record0) {
+	    exit (0);
+	}
+	if ($id == 0) {
+	    parse_record_0 ($data);
+	}
+}
+
+#my @resources = @{$pdb->{"resources"}};
+#print STDERR "Number of resources: " . $#resources . "\n";
+
+my $text = $pdb->text;
+
+#{
+#    local $/;
+#    $text =~ s/\r//g;
+#}
+
+if (defined $opt_rawhtml) {
+    binmode (STDOUT);
+    print $text;
+}
+
+my %fileposmap;
+
+print STDERR "Looking for filepos\n";
+my $cp = 0;
+my $len = length ($text);
+while ($cp < $len) {
+    my $s = substr ($text, $cp, 50);
+    if (substr ($s, 0, 7) eq "filepos") {
+	if ($s =~ /^filepos=(\d+)/) {
+#	    print STDERR "FILEPOS: $cp - $1\n";
+	    $fileposmap{$1} = 1;
+	}
+	if ($s =~ /^filepos=\"(\d+)\"/) {
+#	    print STDERR "FILEPOS: $cp - $1\n";
+	    $fileposmap{$1} = 1;
+	}
+    }
+    $cp++;
+}
+print STDERR "Found all filepos\n";
+
+my $offset = 0;
+
+print STDERR "Adding name attributes\n";
+foreach my $pos (sort keys %fileposmap) {
+#    print STDERR "NAMEPOS: $pos\n";
+    my $a = substr ($text, $pos+$offset, 2);
+    if ($a eq "<a" or $a eq "<A") {
+	substr ($text, $pos+$offset, 2, "<a name=\"" . $pos . "\"");
+	$offset += (8 + length ($pos));
+	next;
+    }
+    if ($a eq "<h" or $a eq "<H") {
+	# Put an empty acnhor before header
+	substr ($text, $pos+$offset, 2, "<a name=\"" . $pos . "\"></a><h");
+	$offset += (15 + length ($pos));
+	next;
+    }
+    print STDERR "WARNING: $pos - Not an anchor: $a\n";
+}
+
+
+my $tree = new HTML::TreeBuilder ();
+$tree->ignore_unknown (0);
+$tree->parse ($text);
+$tree->eof ();
+
+#my $tree = HTML::TreeBuilder->new_from_content ($text);
+
+fix_filepos_attributes ($tree);
+fix_image_tags ($tree);
+
+my $htmlfile = $filename;
+$htmlfile =~ s/\.mobi/.html/;
+$htmlfile =~ s/\.prc/.html/;
+$htmlfile =~ s/\.pdb/.html/;
+$htmlfile =~ s/\.azw/.html/;
+open HTML, ">$explodedir/$htmlfile" or die "Could not open file $explodedir/$htmlfile";
+
+my $html = $tree->as_HTML;
+
+if (not defined $opt_mobihtml) {
+###################################################################
+#For .IMP start
+#
+#    $html =~ s/<mbp:pagebreak\s*\//<br style=\"page-break-after:always\" \//g;
+#    $html =~ s/<mbp:pagebreak\s*/<br style=\"page-break-after:always\" \//g;
+#
+#For .IMP end
+###################################################################
+#    $html =~ s/<mbp:pagebreak>/<br style=\"page-break-after:always\"\/>/g;
+#    $html =~ s/<mbp:pagebreak>//g;
+    $html =~ s/<\/mbp:pagebreak>//g;
+    $html =~ s/<guide>.*?<\/guide>//g;
+    $html =~ s/<mbp:nu>//g;
+    $html =~ s/<\/mbp:nu>//g;
+    $html =~ s/<mbp:section>//g;
+    $html =~ s/<\/mbp:section>//g;
+    $html =~ s/<mbp:frameset>//g;
+    $html =~ s/<\/mbp:frameset>//g;
+    $html =~ s/<mbp:slave-frame>//g;
+    $html =~ s/<\/mbp:slave-frame>//g;
+
+    $html =~ s/\/div>/\/div>\n/g; 
+
+###################################################################
+#For .IMP start
+#
+    #$html =~ s/<body/<BODY style=\"margin-left:2%; margin-right:2%; font-size::x-small; text-align:justify\"/g; # add small margins and justified text
+    $html =~ s/<body/<BODY style=\"margin-left:2%; margin-right:2%; text-align:justify\"/g; # add small margins and justified text
+    $html =~ s/<mbp:pagebreak/<p style=\"page-break-before: always\"/g; # insert proper page-breaks
+    $html =~ s/<p/\n<p/g; # insert newline before '<p' construct
+    $html =~ s/<img align="baseline"/<img/g; # remove the troublesome baseline keyword
+    $html =~ s/<p style=\"page-break-before: always\"><\/body>/<\/body>/g;  #fix up last (unwanted) page-break
+    $html =~ s/<div align=\"center\"><img/<div align=\"center\"><p align=\"center\"><img/g;  # kludge to get eBook Publisher to center images
+#
+#For .IMP end
+###################################################################
+
+}
+
+print HTML $html;
+
+###################################################################
+#For .IMP start
+#
+
+flush HTML;
+
+###################################################################
+#
+# Adapted by Nick Rapallo (January 2008)
+#
+# Modified code taken directly from "SBPubX.doc" (installed by the eBook Publisher
+# software).  Given a single .html it creates .opf project file for later use as well
+# as .IMP for GEB/EBW 1150; can change the latter to REB 1200 or REB 1100 by
+# uncommenting the {BuildTarget} lines below.
+
+use Win32::OLE;
+use Win32::OLE qw(EVENTS);
+Win32::OLE->Initialize(Win32::OLE::COINIT_APARTMENTTHREADED);
+
+#my $usage='mobi2imp.pl Source.prc ExplodeDir [Category [Authorname [Title]]]';
+#die "Usage:  $usage\n" if ($#ARGV > 1 and $#ARGV < 5);
+
+###################################################################
+#
+# get the interfaces, complain and quit if we cannot
+#
+my $project = Win32::OLE->new("SBPublisher.Project") or
+	die "Unable to get IProject interface\n";
+
+my $builder = Win32::OLE->new("SBPublisher.Builder") or
+	die "Unable to get IBuilder interface\n";
+
+# Setup the event handling.
+#
+#Win32::OLE->WithEvents($builder, 'EventHandlers');
+
+###################################################################
+#
+# Create a new project and add our document file with optional cover.
+#
+$project->ClearAll();
+#$project->AddSourceFile("cover.htm");
+$project->AddSourceFile("$explodedir/$htmlfile");
+ 
+my $bookname = $name;
+$bookname =~ s/_/ /g; # remove any underlines used as spaces
+$bookname = $title unless not defined $title;
+$category = "Converted Mobipocket" unless defined $category;
+$author = "Mobipocket" unless defined $author;
+
+###################################################################
+#
+# Set the various "metadata" items for the publication
+#
+$project->{AuthorFirstName} = $author;
+$project->{BookTitle}       = $bookname;
+$project->{Category}        = $category;
+#$project->{ISBN} = $project->CanonicalizeISBN("0448163004 ");
+#$project->{BISAC} = "FIC004000";
+
+###################################################################
+#
+# Now build the OEBFF output
+#
+$project->{OutputDirectory} = ".";
+$project->{Compress}        = 1;   #True
+$project->{Encrypt}         = 0;   #False
+$project->{KeepAnchors}     = 1;   #True
+$project->{Language}        = "en";
+$project->{RequireISBN}     = 0;   #False
+$project->{Zoom}            = 2;
+
+###################################################################
+#
+# Now (optionally) build the REB 1200 (FullVga) .IMP output
+#$project->{BookFileName}    = $bookname . "_1200";
+#$project->{BookFileName}    = $author . " - " . $bookname . "_1200";
+#$project->Save($bookname . "_1200.opf");
+#$project->Save($author . " - " . $bookname . "_1200.opf");
+#
+#$project->{BuildTarget}     = 1;
+#
+# Now generate both the OEBFF and/or .IMP output
+#$builder->GenerateOEBFF($project, 1);
+#$builder->Build($project);
+#if (Win32::OLE->LastError() != 0) {
+#	print "ERROR: GenerateOEBFF/Build method failed for REB 1200.\n";
+#} else {
+#	print "REB 1200 ebook created!\n";
+#}
+
+###################################################################
+#
+# Now build the EBW/GEB 1150 (gray HalfVga) .IMP output
+#
+#$project->{BookFileName}    = $bookname;
+$project->{BookFileName}    = $author . " - " . $bookname;
+#$project->Save($bookname . ".opf");
+$project->Save($author . " - " . $bookname . ".opf");
+#
+$project->{BuildTarget} = 2;
+#
+# Now generate both the OEBFF and/or .IMP output
+#$builder->GenerateOEBFF($project, 1);
+$builder->Build($project);
+if (Win32::OLE->LastError() != 0) {
+	print "ERROR: GenerateOEBFF/Build method failed for EBW 1150.\n";
+} else {
+	print "EBW 1150 ebook created!\n";
+}
+
+###################################################################
+#
+# Now (optionally) build the REB 1100 (mono HalfVGA) .RB output
+#
+#$project->{BookFileName}    = $bookname;
+#$project->{BookFileName}    = $author . " - " . $bookname;
+#$project->Save($bookname . ".opf");
+#$project->Save($author . " - " . $bookname . ".opf");
+#
+#$project->{BuildTarget} = 3;
+#
+# Now generate the .RB output
+#$builder->Build($project);
+#if (Win32::OLE->LastError() != 0) {
+#	print "ERROR: Build method failed for REB 1100.\n";
+#} else {
+#	print "REB 1100 ebook created!\n";
+#}
+
+Win32::OLE->Uninitialize();
+#
+#For .IMP end
+###################################################################
+
+close HTML;
+
+
+sub fix_image_tags {
+    my $tree = shift;
+    my @imgel = $tree->find ("img");
+    foreach my $img (@imgel) {
+	my $recindex = $img->attr ("recindex");
+	my $ind = int ($recindex);
+	my $filename = $image_index_to_filename{$ind};
+##	print STDERR "FIX IMAGE TAGS: $recindex - $ind - $filename\n";
+	$img->attr ("recindex", undef);
+	$img->attr ("src", $filename);
+    }
+}
+
+sub fix_filepos_attributes {
+    my $tree = shift;
+    my @ael = $tree->find ("a");
+    print STDERR "Fixing filpos attribute\n";
+    foreach my $a (@ael) {
+	my $filepos = $a->attr ("filepos");
+	if ($filepos) {
+	    $a->attr ("href", "\#$filepos");
+	    $a->attr ("filepos", undef);
+##	    print STDERR "FIX FILEPOS ATTR: $filepos\n";
+	}
+    }
+}
+
+sub parse_record_0 {
+    my $rec = shift;
+    my $palmdocheader = substr ($rec, 0, 16);
+    parse_palmdoc_header ($palmdocheader);
+    if ($type eq "BOOK" and $creator eq "MOBI") {
+	my $mobiheader = substr ($rec, 16);
+	parse_mobi_header ($mobiheader);
+    }
+}
+
+sub parse_palmdoc_header {
+    my $data = shift;
+    my ($version, $length, $nrecords, $recsize, $unknown) =
+	unpack ("nxxNnnN", $data);
+    print STDERR "PDHEADER  Version: $version\n";
+    print STDERR "PDHEADER   Length: $length\n";
+    print STDERR "PDHEADER NRecords: $nrecords\n";
+    print STDERR "PDHEADER  Recsize: $recsize\n";
+    print STDERR "PDHEADER  Unknown: $unknown\n";
+}
+
+sub parse_mobi_header {
+    my $data = shift;
+    my ($doctype, $length, $type, $codepage, $uniqueid, $ver) =
+	unpack ("a4NNNNN", $data);
+    my ($exthflg) = unpack ("N", substr ($data, 0x70));
+    print STDERR "MOBIHEADER doctype: $doctype\n";
+    print STDERR "MOBIHEADER  length: $length\n";
+    print STDERR "MOBIHEADER    type: $type\n";
+    print STDERR "MOBIHEADER   codep: $codepage\n";
+    print STDERR "MOBIHEADER  uniqid: $uniqueid\n";
+    print STDERR "MOBIHEADER     ver: $ver\n";
+    print STDERR "MOBIHEADER exthflg: $exthflg\n";
+
+    if ($exthflg & 0x40) {
+	my $exth = substr ($data, $length);
+	parse_mobi_exth ($exth);
+    }
+}
+
+sub parse_mobi_exth {
+    my $data = shift;
+    my ($doctype, $len, $n_items) = unpack ("a4NN", $data);
+    print STDERR "EXTH doctype: $doctype\n";
+    print STDERR "EXTH  length: $len\n";
+    print STDERR "EXTH n_items: $n_items\n";
+    my $pos = 12;
+    foreach (1..$n_items) {
+	my ($id, $size) = unpack ("NN", substr ($data, $pos));
+	my $contlen = $size-8;
+	my ($id, $size, $content) = unpack ("NNa$contlen", substr ($data, $pos));
+	my $hid = sprintf ("%x", $id);
+	my $hsize = sprintf ("%x", $size);
+	if (MobiPerl::EXTH::is_binary_data ($id)) {
+	    $content = MobiPerl::Util::iso2hex ($content);
+	}
+	print STDERR "ITEM: $hid $hsize - $id $size - $content\n";
+###################################################################
+#For .IMP start
+#
+	if ($id == 0x64) { $content =~ s/_/ /g; $author = $content unless defined $author; }
+	if ($id == 0x69) { $content =~ s/_/ /g; $category = $content unless defined $category; }
+#
+#For .IMP end
+###################################################################
+	$pos += $size;
+    }
+}

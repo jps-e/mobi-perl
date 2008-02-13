@@ -21,6 +21,8 @@
 use FindBin qw($RealBin);
 use lib "$RealBin";
 
+use MobiPerl::Util;
+
 use HTML::TreeBuilder;
 use Palm::PDB;
 use Palm::Doc;
@@ -30,7 +32,6 @@ use Date::Format;
 use Getopt::Mixed;
 
 use MobiPerl::EXTH;
-use MobiPerl::Util;
 
 use strict;
 

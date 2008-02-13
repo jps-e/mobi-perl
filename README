@@ -1,3 +1,13 @@
+Changes in 0.0.29:
+
+- mobi2html now print a warning when huffdic compression is used and
+  the resulting html file will be empty.
+
+- added mobi2imp to the distribution.
+
+- Added flag --mbpfile to mobi2mobi. Can be used to set author and publisher
+  from the mbp file.
+
 Changes in 0.0.28:
 
 - Fixed the substituion of mbp:pagebreak that was done wrongly
