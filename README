@@ -1,3 +1,7 @@
+Changes in 0.0.30:
+
+- mobi2html chaned so that <m is recognized as an anchor position.
+
 Changes in 0.0.29:
 
 - mobi2html now print a warning when huffdic compression is used and

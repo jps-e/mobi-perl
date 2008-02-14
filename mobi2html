@@ -171,6 +171,12 @@ foreach my $pos (sort keys %fileposmap) {
 	$offset += (15 + length ($pos));
 	next;
     }
+    if ($a eq "<m" or $a eq "<M") { # Probably a <mbp:pagebreak/>
+	# Put an empty acnhor before mbp:pagebreak that are doubled...
+	substr ($text, $pos+$offset, 2, "<a name=\"" . $pos . "\"></a><m");
+	$offset += (15 + length ($pos));
+	next;
+    }
     print STDERR "WARNING: $pos - Not an anchor: $a\n";
 }
 
