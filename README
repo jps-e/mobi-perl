@@ -1,6 +1,11 @@
+Changes in 0.0.31:
+
+- mobi2html changed so that < is recognized as an anchor position
+  as a last resort.
+
 Changes in 0.0.30:
 
-- mobi2html chaned so that <m is recognized as an anchor position.
+- mobi2html changed so that <m is recognized as an anchor position.
 
 Changes in 0.0.29:
 

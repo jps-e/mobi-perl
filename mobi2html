@@ -177,6 +177,13 @@ foreach my $pos (sort keys %fileposmap) {
 	$offset += (15 + length ($pos));
 	next;
     }
+    $a = substr ($text, $pos+$offset, 1);
+    if ($a eq "<") { # Default, just add anchor before
+	print STDERR "Warning: Adding achor before <\n";
+	substr ($text, $pos+$offset, 1, "<a name=\"" . $pos . "\"></a><");
+	$offset += (15 + length ($pos));
+	next;
+    }
     print STDERR "WARNING: $pos - Not an anchor: $a\n";
 }
 
