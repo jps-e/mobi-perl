@@ -1,3 +1,20 @@
+Changes in 0.0.32:
+
+- html2mobi now works if images that are refered to in the html file
+  does not exist.
+
+- Added flag --fixhtmlbr to html2mobi. This flag will try to fix
+  html files where two <br> have been uses instead of <p></p>.
+
+- Removed mobi2imp from distribution since it is distributed
+  seperately in MobileRead forum. Duplications are bad and
+  confusing. 
+
+- Fixed so that mobi2html works with utf-8 encoded files
+
+- Added instructions of how to install Perl and modules on Mac
+  on the web page.
+
 Changes in 0.0.31:
 
 - mobi2html changed so that < is recognized as an anchor position

@@ -103,13 +103,17 @@ sub check_for_links {
 	}
 	if ($tag eq "img") {
 	    my $src = $element->attr("src");
-	    $element->attr("src", undef);
-	    $self->{RECORDINDEX}++;
-	    #
-	    # Does not work for more than 9 images
-	    #
-	    $element->attr("recindex", sprintf ("%05d", $self->{RECORDINDEX}));
-	    $self->{RECORDTOIMAGEFILE}->{$self->{RECORDINDEX}} = $src;
+	    if (-e "$src") {
+		#
+		# Onlys save link if image exists.
+		#
+		$element->attr("src", undef);
+		$self->{RECORDINDEX}++;
+		$element->attr("recindex", sprintf ("%05d", $self->{RECORDINDEX}));
+		$self->{RECORDTOIMAGEFILE}->{$self->{RECORDINDEX}} = $src;
+	    } else {
+		print STDERR "Warning: Image file do not exists: $src\n";
+	    }
 	    next;
 	}
 	print STDERR "LINK: $tag $link $attr at ", $element->address(), " ";

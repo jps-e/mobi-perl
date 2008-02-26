@@ -1,5 +1,5 @@
 
-FILEPREFIX = mobiperl-0.0.31
+FILEPREFIX = mobiperl-0.0.32
 TARFILE =$(FILEPREFIX).tar
 RARFILE =$(FILEPREFIX)-win.rar
 ZIPFILE =$(FILEPREFIX)-win.zip
@@ -17,7 +17,7 @@ MOBIPERLFILES = \
 	MobiPerl/Util.pm \
 
 FILES = mobi2html html2mobi lit2mobi \
-        mobi2mobi opf2mobi mobi2imp \
+        mobi2mobi opf2mobi \
 	gpl-3.0.txt \
 	Makefile README
 
@@ -61,19 +61,23 @@ mm:
 mh:
 	pp -M FindBin -M Palm::PDB -M Palm::Doc -M Date::Format -M Date::Parse -M Getopt::Mixed -M Image::Size -M Image::BMP -M MobiPerl::MobiHeader -M MobiPerl::MobiFile -M MobiPerl::Opf -M MobiPerl::Config -M MobiPerl::LinksInfo -o mobi2html.exe mobi2html
 
+mi:
+	pp -M FindBin -M Palm::PDB -M Palm::Doc -M Date::Format -M Date::Parse -M Getopt::Mixed -M Image::Size -M Image::BMP -M MobiPerl::MobiHeader -M MobiPerl::MobiFile -M MobiPerl::Opf -M MobiPerl::Config -M MobiPerl::LinksInfo -M Win32::OLE -o mobi2html.exe mobi2html
+
 
 all:	hm om lm mm mh
 
 wininstall:
-	copy html2mobi.exe c:\Perlb820\bin\
-	copy opf2mobi.exe c:\Perlb820\bin\
-	copy lit2mobi.exe c:\Perlb820\bin\
-	copy mobi2mobi.exe c:\Perlb820\bin\
-	copy mobi2html.exe c:\Perlb820\bin\
+	copy html2mobi.exe c:\Perlb820\bin
+	copy opf2mobi.exe c:\Perlb820\bin
+	copy lit2mobi.exe c:\Perlb820\bin
+	copy mobi2mobi.exe c:\Perlb820\bin
+	copy mobi2html.exe c:\Perlb820\bin
+	copy mobi2imp.exe c:\Perlb820\bin
 
 
 pack:
-	"c:\Program Files\7-ZIP\7z" -tzip a $(ZIPFILE) html2mobi.exe opf2mobi.exe lit2mobi.exe mobi2mobi.exe mobi2html.exe $(TARFILE)
+	"c:\Program Files\7-ZIP\7z" -tzip a $(ZIPFILE) html2mobi.exe opf2mobi.exe lit2mobi.exe mobi2mobi.exe mobi2html.exe mobi2imp $(TARFILE)
 
 oldpack:
 	"c:\Program Files\WinRAR\rar" a $(RARFILE) html2mobi.exe opf2mobi.exe lit2mobi.exe mobi2mobi.exe mobi2html.exe $(TARFILE)

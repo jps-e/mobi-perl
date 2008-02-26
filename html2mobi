@@ -30,11 +30,11 @@ use strict;
 
 use vars qw ($opt_title $opt_author $opt_htmlfile $opt_mobifile $opt_gentoc
 	     $opt_coverimage $opt_addthumbnail $opt_noimages $opt_addcoverlink
-	     $opt_prefixtitle);
+	     $opt_prefixtitle $opt_fixhtml $opt_fixhtmlbr);
 
 Getopt::Mixed::getOptions ("title=s author=s htmlfile=s mobifile=s gentoc
                             coverimage=s addthumbnail=s noimages addcoverlink
-                            prefixtitle=s");
+                            prefixtitle=s fixhtml fixhtmlbr");
 
 #
 # expand html document with links...
@@ -76,7 +76,6 @@ $config->author ("Unspecified Author");
 $config->author ($opt_author) if defined $opt_author;
 $config->title ($opt_title) if defined $opt_title;
 $config->prefix_title ($opt_prefixtitle);
-
 
 my $filename = $filenames[0];
 $mobifile = $filename;
@@ -180,7 +179,15 @@ sub one_html_file {
     
     MobiPerl::Util::fix_pre_tags ($tree);
 
-    # Fix links
+    if (defined $opt_fixhtml) {
+	MobiPerl::Util::fix_html ($tree);
+    }
+
+    if (defined $opt_fixhtmlbr) {
+	MobiPerl::Util::fix_html_br ($tree);
+    }
+
+    # Fix links, convert them to filepos
 
     my @refs = $tree->look_down ("href", qr/^\#/);
     my @hrefs = ();
@@ -423,6 +430,11 @@ cover image is used.
 
 Add link to cover image first in main HTML document. This requires the
 --coverimage flag.
+
+=item B<--fixhtmlbr>
+
+Tries to fix html files where two <br> in a row has been used instead of
+<p></p>.
 
 =item B<--gentoc>
 
