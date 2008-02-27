@@ -1,3 +1,8 @@
+Changes in 0.0.34:
+
+- png files did not work for html2mobi. Changed so that png files are
+  converted to jpg before it is packed into the mobi file.
+
 Changes in 0.0.33:
 
 - The fix for UTF-8 was wrong. It was applied if the codepage was 1252 also.
