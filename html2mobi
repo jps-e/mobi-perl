@@ -30,11 +30,11 @@ use strict;
 
 use vars qw ($opt_title $opt_author $opt_htmlfile $opt_mobifile $opt_gentoc
 	     $opt_coverimage $opt_addthumbnail $opt_noimages $opt_addcoverlink
-	     $opt_prefixtitle $opt_fixhtml $opt_fixhtmlbr);
+	     $opt_prefixtitle $opt_fixhtml $opt_fixhtmlbr $opt_keepbr);
 
 Getopt::Mixed::getOptions ("title=s author=s htmlfile=s mobifile=s gentoc
                             coverimage=s addthumbnail=s noimages addcoverlink
-                            prefixtitle=s fixhtml fixhtmlbr");
+                            prefixtitle=s fixhtml fixhtmlbr keepbr");
 
 #
 # expand html document with links...
@@ -76,6 +76,7 @@ $config->author ("Unspecified Author");
 $config->author ($opt_author) if defined $opt_author;
 $config->title ($opt_title) if defined $opt_title;
 $config->prefix_title ($opt_prefixtitle);
+$config->{KEEPBR} = 1 if defined $opt_keepbr;
 
 my $filename = $filenames[0];
 $mobifile = $filename;
@@ -184,7 +185,7 @@ sub one_html_file {
     }
 
     if (defined $opt_fixhtmlbr) {
-	MobiPerl::Util::fix_html_br ($tree);
+	MobiPerl::Util::fix_html_br ($tree, $config);
     }
 
     # Fix links, convert them to filepos
@@ -435,6 +436,11 @@ Add link to cover image first in main HTML document. This requires the
 
 Tries to fix html files where two <br> in a row has been used instead of
 <p></p>.
+
+=item B<--keepbr>
+
+Used together with --fixhtmlbr and causes to <br> to be kept so the result
+is a book with space between paragraphs.
 
 =item B<--gentoc>
 

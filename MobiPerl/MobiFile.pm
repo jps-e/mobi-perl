@@ -183,7 +183,7 @@ sub save_mobi_file {
     if (not $config->no_images ()) {
 	for my $i (1..$linksinfo->get_record_index ()) {
 	    my $filename = $linksinfo->get_image_file ($i);
-	    print STDERR "New record for image $current_record_index: $filename\n";
+##	    print STDERR "New record for image $current_record_index: $filename\n";
 
 #
 # Is it really correct to assign id and categori?

@@ -19,6 +19,7 @@ sub new {
 	PREFIXTITLE => "",
 	NOIMAGES => 0,
 	FIXHTMLBR => 0,
+	KEEPBR => 0,
 	@_
     }, $class;
     $obj->initialize_from_file ($data) if defined $data;

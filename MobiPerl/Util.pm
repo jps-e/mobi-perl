@@ -188,7 +188,7 @@ sub get_tree_from_opf {
 	}
 
 	if ($config->{FIXHTMLBR}) {
-	    fix_html_br ($tree);
+	    fix_html_br ($tree, $config);
 	}
 
 	$linksinfo->check_for_links ($tree);
@@ -623,6 +623,7 @@ sub fix_html {
 
 sub fix_html_br {
     my $tree = shift;
+    my $config = shift;
 
     print STDERR "FIX HTML BR\n";
 
@@ -639,21 +640,34 @@ sub fix_html_br {
     push @paras, $p;
     my $i = 0;
     while ($i <= $#content) {
-##	print STDERR "+";
+#	print STDERR "-";
 	my $c = $content[$i];
-	if (ref($c) eq "HTML::Element") {
+	if ($c and ref($c) eq "HTML::Element") {
 	    my $tag = $c->tag;
 	    if ($tag eq "br" and ref($c) eq "HTML::Element" and
-		defined $content[$i+1] and $content[$i+1]->tag eq "br") {
+		defined $content[$i+1] and ref ($content[$i+1]) and
+		$content[$i+1]->tag eq "br") {
 		$p = HTML::Element->new("p");
 		push @paras, $p;
+		if ($config->{KEEPBR}) {
+#		    $p->push_content (HTML::Element->new("br"));
+		    $p->push_content (HTML::Element->new("br"));
+		}
 		$i++;
-##		print STDERR "P";
+		if ($i % 10 == 0) {
+		    print STDERR "P";
+		}
 	    } else {
+#		print STDERR $c->as_HTML;
 		$p->push_content ($c);
 	    }
 ##	    print STDERR "TAG:$tag:\n";
 	} else {
+	    if (ref($c)) {
+#		print STDERR $c->as_HTML;
+	    } else {
+#		print STDERR $c;
+	    }
 	    $p->push_content ($c);
 	}
 	$i++;
