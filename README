@@ -1,6 +1,10 @@
+Changes in 0.0.36:
+
+- added mobils to MobiPerl.
+
 Changes in 0.0.35:
 
-- Fixed bug with mobi2html and files where no codepage was specified.
+- Fixed a bug with mobi2html and files where no codepage was specified.
 
 - Fixed a bug in "html2mobi --fixhtmlbr file.html". It now seems possible
   to use this for eReader books that have been converted to html and were
