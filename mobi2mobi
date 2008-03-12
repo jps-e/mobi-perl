@@ -60,14 +60,14 @@ use vars qw ($opt_outfile $opt_title $opt_prefixtitle $opt_author
 	     $opt_gen3imagefix
 	     $opt_addthumbnail $opt_coverimage $opt_patch $opt_coveroffset
 	     $opt_exthtype $opt_exthdata $opt_booktype
-	     $opt_delexthtype $opt_mbpfile);
+	     $opt_delexthtype $opt_mbpfile $opt_savecover $opt_savethumb);
 
 Getopt::Mixed::getOptions ("outfile=s title=s prefixtitle=s author=s 
                             publisher=s databasename=s patch fiximagesizes
                             gen3imagefix
                             exthtype=s exthdata=s delexthtype=s booktype=s
                             addthumbnail=s coverimage=s coveroffset=s
-                            mbpfile=s
+                            mbpfile=s savecover=s savethumb=s
                             ");
 
 my $author = "";
@@ -181,18 +181,22 @@ print "---------------------------------------------------\n";
 
 my $imgindex = 0;
 my $coverimageindex = 0;
+my $thumbimageindex = 0;
+my $firstimageindex = 0;
 foreach my $r (@records) {
     my $data = $r->{"data"};
     my ($x, $y) = imgsize (\$data);
     if (defined $x) {
 	print "Image record index: $imgindex ($x x $y)\n";
-	$coverimageindex = $imgindex;
+	$firstimageindex = $imgindex;
+###	$coverimageindex = $imgindex;
+### Do not replace image since you cannot know that the image is a coverimage.
 	last;
     }
     $imgindex++;
 }
 print "START IMAGE INDEX: $imgindex\n";
-print "COVER IMAGE INDEX: $coverimageindex\n";
+print "COVER IMAGE INDEX: $firstimageindex\n";
 
 my $r0 = $records[0];
 
@@ -283,18 +287,26 @@ if (defined $opt_outfile) {
     }
 
     if (defined $opt_addthumbnail) {
-	my $img = Palm::PDB->new_Record();
-	$img->{"categori"} = 0;
-	$img->{"attributes"}{"Dirty"} = 1;
-	$lastid++;
-	$img->{"id"} = $lastid;
+	if ($thumbimageindex != 0) {
+	    print STDERR "Setting record $thumbimageindex to $opt_addthumbnail\n";
+##	    my $data = get_cover_image_data ($opt_coverimage);
+	    my $data = MobiPerl::Util::get_thumb_cover_image_data ($opt_addthumbnail);
+	    $pdb->{"records"}->[$thumbimageindex]->{"data"} = $data;
+	    $thumboffset = $thumbimageindex-$imgindex;
+	} else {
+	    my $img = Palm::PDB->new_Record();
+	    $img->{"categori"} = 0;
+	    $img->{"attributes"}{"Dirty"} = 1;
+	    $lastid++;
+	    $img->{"id"} = $lastid;
 ##	my $data = get_cover_image_data ($opt_addthumbnail);
-	my $data = MobiPerl::Util::get_thumb_cover_image_data ($opt_addthumbnail);
-	$img->{"data"} = $data;
-	$pdb->append_Record ($img);
-	my @records = @{$pdb->{"records"}};
-	my $thumbindex = $#records;
-	$thumboffset = $thumbindex-$imgindex;
+	    my $data = MobiPerl::Util::get_thumb_cover_image_data ($opt_addthumbnail);
+	    $img->{"data"} = $data;
+	    $pdb->append_Record ($img);
+	    my @records = @{$pdb->{"records"}};
+	    my $thumbindex = $#records;
+	    $thumboffset = $thumbindex-$imgindex;
+	}
     }
 
     if ($ismobi) {
@@ -428,7 +440,67 @@ sub parse_mobi_header {
 	my $eh = new MobiPerl::EXTH ($exth);
 	my $cover_offset = $eh->get_cover_offset ();
 	print "COVEROFFSET: $cover_offset\n";
-	$coverimageindex += $cover_offset;
+	my $thumb_offset = $eh->get_thumb_offset ();
+	print "THUMBOFFSET: $thumb_offset\n";
+
+	if ($cover_offset) {
+	    $coverimageindex = $imgindex + $cover_offset;
+	}
+	if ($thumb_offset) {
+	    $thumbimageindex = $imgindex + $thumb_offset;
+	}
+
+	if (defined $opt_savecover) {
+	    if ($cover_offset != 0) {
+		my $filename = $opt_savecover;
+		my $r = $records[$coverimageindex];
+		my $data = $r->{"data"};
+		my ($x, $y, $type) = imgsize(\$data);
+		if (not $filename =~ /\./) {
+		    $filename .= "." . lc ($type);
+		}
+		if (defined $x) {
+		    print "Saving cover image $x x $y: $filename\n";
+		    if (open DATA, ">$filename") {
+			binmode (DATA);
+			print DATA $data;
+			close DATA;
+		    } else {
+			print STDERR "Could not save cover: $!";
+		    }
+		} else {
+		    print STDERR "ERROR: Data at cover offset is not an image\n";
+		}
+	    } else {
+		print STDERR "ERROR: No cover image in book\n";
+	    }
+	}
+
+	if (defined $opt_savethumb) {
+	    if ($thumb_offset != 0) {
+		my $filename = $opt_savethumb;
+		my $r = $records[$thumbimageindex];
+		my $data = $r->{"data"};
+		my ($x, $y, $type) = imgsize(\$data);
+		if (not $filename =~ /\./) {
+		    $filename .= "." . lc ($type);
+		}
+		if (defined $x) {
+		    print "Saving cover image $x x $y: $filename\n";
+		    if (open DATA, ">$filename") {
+			binmode (DATA);
+			print DATA $data;
+			close DATA;
+		    } else {
+			print STDERR "Could not save thumb: $!";
+		    }
+		} else {
+		    print STDERR "ERROR: Data at thumb offset is not an image\n";
+		}
+	    } else {
+		print STDERR "ERROR: No thumb image in book\n";
+	    }
+	}
 
 	parse_mobi_exth ($exth);
     }
@@ -570,13 +642,25 @@ Set the publisher of the book.
 
 =item B<--addthumbnail IMAGEFILE>
 
-Add an image that will be used as thumbnail image for Gen3 devices.
-This will only work if the book contains no other images.
+Add an image that will be used as thumbnail image. If there already is
+a thumb nail image it will be replaced.  The only way for it to be a
+thumb nail image is if the thumb offset is specified in the EXTH data.
 
 =item B<--coverimage IMAGEFILE>
 
 Set the cover image of a book. If there already is a cover image it will
-be replaced.
+be replaced. The obly way for it to be a cover image is of the cover offset is
+specified in the EXTH data.
+
+=item B<--savecover FILENAME>
+
+Save the cover image if it exists. If filename is given without
+extension the correct extension will be added.
+
+=item B<--savethumb FILENAME>
+
+Save the thumb nail image if it exists. If filename is given without
+extension the correct extension will be added.
 
 =item B<--fiximagesizes>
 
@@ -594,7 +678,8 @@ Change the offset of the cover image so it points to another image.
 
 =item B<--exthtype TYPE>
 
-The type of the EXTH item you want to change.
+The type of the EXTH item you want to change. This is the name of the
+type and the names can be found in MobiPerl/EXTH.pm.
 
 =item B<--exthdata TYPE>
 

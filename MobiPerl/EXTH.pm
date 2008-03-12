@@ -280,13 +280,28 @@ sub get_data {
 
 sub get_cover_offset {
     my $self = shift;
-    my $res = 0;
     my @type = @{$self->{TYPE}};
     my @data = @{$self->{DATA}};
     my $res = 0;
     foreach my $i (0..$#type) {
 	if ($type[$i] == 201) {
-	    ($res) = unpack ("N", $data[$i]);
+##	    print STDERR "TYPE: $type[$i] - $data[$i]\n";
+##	    ($res) = unpack ("N", $data[$i]);
+	    $res = $data[$i];
+##	    print STDERR "RES: $res\n";
+	}
+    }
+    return $res;
+}
+
+sub get_thumb_offset {
+    my $self = shift;
+    my @type = @{$self->{TYPE}};
+    my @data = @{$self->{DATA}};
+    my $res = 0;
+    foreach my $i (0..$#type) {
+	if ($type[$i] == 202) {
+	    $res = $data[$i];
 	}
     }
     return $res;

@@ -1,5 +1,5 @@
 
-FILEPREFIX = mobiperl-0.0.36
+FILEPREFIX = mobiperl-0.0.37
 TARFILE =$(FILEPREFIX).tar
 RARFILE =$(FILEPREFIX)-win.rar
 ZIPFILE =$(FILEPREFIX)-win.zip

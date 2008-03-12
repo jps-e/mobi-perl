@@ -428,7 +428,7 @@ sub get_extended_header_data {
     my $eh = new MobiPerl::EXTH;
     $eh->set ("author", $author);
     my $pub = $self->get_publisher ();
-    $eh->set ("pubisher", $pub) if $pub;
+    $eh->set ("publisher", $pub) if $pub;
 
     my $coffset = $self->get_cover_offset ();
     if ($coffset >= 0) {

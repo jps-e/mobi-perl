@@ -1,3 +1,18 @@
+Changes in 0.0.37:
+
+- The --publisher flag to mobi2mobi now works correctly.
+
+- Added flag "--savecover FILENAME" to mobi2mobi.
+
+- Added flag "--savethumb FILENAME" to mobi2mobi.
+
+- Changed so that "--coverimage FILENAME" now only replaces an image if
+  cover offset is specified  in EXTH. If cover offset is not specified
+  a new image is created and used as cover image.
+
+- Changed so that "--addthumbnail FILENAME" works in the same way as the
+  --cover image flag.
+
 Changes in 0.0.36:
 
 - added mobils to MobiPerl.
