@@ -340,24 +340,37 @@ sub text {
 
 	} elsif( defined wantarray ) {
 
-		my $recs = $prc ? $self->{'resources'} : $self->{'records'};
+	    my $recs = $prc ? $self->{'resources'} : $self->{'records'};
 
-		my $header = $recs->[0];
-		if( defined _parse_headerrec($header) ) {
-			# a proper Doc file should be fine, but if it's not Doc
-			# compression like some Mobi docs seem to be we want to
-			# bail early. Otherwise we end up with a huge stream of
-			# substr() errors and we _still_ don't get any content.
-			eval {
-				sub min { return ($_[0]<$_[1]) ? $_[0] : $_[1] }
-				my $maxi = min($#$recs, $header->{'records'});
-				for( my $i = 1; $i <= $maxi; $i ++ ) {
-						$body .= _decompress_record( $header->{'version'},
-							$recs->[$i]->{'data'} );
-				}
-			};
-			return undef if $@;
-		}
+	    my $header = $recs->[0];
+	    if( defined _parse_headerrec($header) ) {
+		# a proper Doc file should be fine, but if it's not Doc
+		# compression like some Mobi docs seem to be we want to
+		# bail early. Otherwise we end up with a huge stream of
+		# substr() errors and we _still_ don't get any content.
+		eval {
+		    sub min { return ($_[0]<$_[1]) ? $_[0] : $_[1] }
+		    my $maxi = min($#$recs, $header->{'records'});
+		    for( my $i = 1; $i <= $maxi; $i ++ ) {
+			my $data = $recs->[$i]->{'data'};
+			my $len = length($data);
+			my $overlap = "";
+			if ($self->{multibyteoverlap}) {
+			    my $c = chop $data;
+			    print STDERR "I:$i - $len - ", int($c), "\n";
+			    my $n = $c & 7;
+			    foreach (0..$n-1) {
+				$overlap = (chop $data) . $overlap;
+			    }
+			}
+			
+			$body .= _decompress_record( $header->{'version'},
+						     $data );
+			$body .= $overlap;
+		    }
+		};
+		return undef if $@;
+	    }
 	}
 
 	return $body;

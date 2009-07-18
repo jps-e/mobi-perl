@@ -1,5 +1,22 @@
 package MobiPerl::EXTH;
 
+#    Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    MobiPerl/EXTH.pm, Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 use FindBin qw($RealBin);
 use lib "$RealBin";
 
@@ -38,6 +55,7 @@ my %typename_to_type = ("drm_server_id" => 1,
 			"clippinglimit" => 401,  # varies in size 1 or 4 seend
 			"publisherlimit" => 402,
 			"403"          => 403,
+			"ttsflag"          => 404,
 			"cdetype"      => 501,
 			"lastupdatetime" => 502,
 			"updatedtitle"   => 503,
@@ -68,6 +86,7 @@ my %type_to_desc = (1 => "drm_server_id",
 		    203 => "hasFakeCover",
 		    401 => "ClippingLimit",
 		    402 => "PublisherLimit",
+		    404 => "TTSFlag",
 		    501 => "CDEContentType",
 		    502 => "LastUpdateTime",
 		    503 => "UpdatedTitle",
@@ -86,6 +105,7 @@ my %binary_data = (114 => 1,
 		   300 => 1,
 		   401 => 1,
 		   403 => 1,
+		   404 => 1,
 		   );
 
 my %format = (114 => 4,
@@ -149,8 +169,46 @@ sub add {
     if ($type) {
 	push @{$self->{TYPE}}, $type;
 	push @{$self->{DATA}}, $data;
+    } else {
+	print STDERR "WARNING: $typename is not defined as an EXTH type\n";
     }
     return $type;
+}
+
+sub delete {
+    my $self = shift;
+    my $typename = shift;
+    my $delexthindex = shift;
+    my $type = $self->get_type ($typename);
+    print STDERR "EXTH delete: $typename - $type - $delexthindex\n";
+    if ($type) {
+	my @type = @{$self->{TYPE}};
+	my @data = @{$self->{DATA}};
+	@{$self->{TYPE}} = ();
+	@{$self->{DATA}} = ();
+	my $index = 0;
+	foreach my $i (0..$#type) {
+##	    print STDERR "TYPE: $type[$i]\n";
+	    if ($type[$i] == $type) {
+		$index++;
+##		print STDERR "INDEX: $index\n";
+	    }
+	    if ($type[$i] == $type and 
+		($delexthindex == 0 or $delexthindex == $index)) {
+		if (is_binary_data ($type[$i])) {
+		    my $hex = MobiPerl::Util::iso2hex ($data[$i]);
+		    print STDERR "DELETING $type[$i]: ", int($data[$i]), " - $hex\n";
+		} else {
+		    print STDERR "DELETING $type[$i]: $data[$i]\n";
+		}
+	    } else {
+		push @{$self->{TYPE}}, $type[$i];
+		push @{$self->{DATA}}, $data[$i];
+	    }
+	}
+    } else {
+	print STDERR "WARNING: $typename is not defined as an EXTH type\n";
+    }
 }
 
 sub get_type {
@@ -160,6 +218,10 @@ sub get_type {
 ###    print STDERR "EXTH: GETTYPE: $typename\n";
     if (defined $typename_to_type{$typename}) {
 	$res = $typename_to_type{$typename};
+    } else {
+	if ($typename =~ /^\d+$/) {
+	    $res = $typename;
+	}
     }
     return $res;
 }
@@ -200,24 +262,25 @@ sub initialize_from_data {
 ##    print "EXTH n_items: $n_items\n";
     my $pos = 12;
     foreach (1..$n_items) {
-	my ($id, $size) = unpack ("NN", substr ($data, $pos));
+	my ($type, $size) = unpack ("NN", substr ($data, $pos));
+	$pos += 8;
 	my $contlen = $size-8;
-	my ($type, $size, $content) = unpack ("NNa$contlen", substr ($data, $pos));
+	my ($content) = unpack ("a$contlen", substr ($data, $pos));
 	if (defined $format{$type}) {
 	    my $len = $format{$type};
 ##	    print STDERR "TYPE:$type:$len\n";
 	    if ($len == 4) {
-		($type, $size, $content) = unpack ("NNN", substr ($data, $pos));
+		($content) = unpack ("N", substr ($data, $pos));
 ##		print STDERR "CONT:$content\n";
 	    }
 	    if ($len == 1) {
-		($type, $size, $content) = unpack ("NNC", substr ($data, $pos));
+		($content) = unpack ("C", substr ($data, $pos));
 ##		print STDERR "CONT:$content\n";
 	    }
 	}
 	push @{$self->{TYPE}}, $type;
 	push @{$self->{DATA}}, $content;
-	$pos += $size;
+	$pos += $contlen;
     }
     if ($self->get_data () ne substr ($data, 0, $len)) {
 	print STDERR "ERROR: generated EXTH does not match original\n";
@@ -282,7 +345,9 @@ sub get_cover_offset {
     my $self = shift;
     my @type = @{$self->{TYPE}};
     my @data = @{$self->{DATA}};
-    my $res = 0;
+# pdurrant: 0 is a valid cover offset, so return -1 if not found
+    my $res = -1;
+#    my $res = 0;
     foreach my $i (0..$#type) {
 	if ($type[$i] == 201) {
 ##	    print STDERR "TYPE: $type[$i] - $data[$i]\n";
@@ -298,7 +363,9 @@ sub get_thumb_offset {
     my $self = shift;
     my @type = @{$self->{TYPE}};
     my @data = @{$self->{DATA}};
-    my $res = 0;
+# pdurrant: 0 is a valid cover offset, so return -1 if not found
+    my $res = -1;
+#    my $res = 0;
     foreach my $i (0..$#type) {
 	if ($type[$i] == 202) {
 	    $res = $data[$i];

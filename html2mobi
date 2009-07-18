@@ -4,7 +4,7 @@
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
+#    the Free Software Foundation, either version 2 of the License, or
 #    (at your option) any later version.
 #
 #    This program is distributed in the hope that it will be useful,
@@ -30,11 +30,16 @@ use strict;
 
 use vars qw ($opt_title $opt_author $opt_htmlfile $opt_mobifile $opt_gentoc
 	     $opt_coverimage $opt_addthumbnail $opt_noimages $opt_addcoverlink
-	     $opt_prefixtitle $opt_fixhtml $opt_fixhtmlbr $opt_keepbr);
+	     $opt_prefixtitle $opt_fixhtml $opt_fixhtmlbr $opt_keepbr 
+	     $opt_imagerescale $opt_removejavascript $opt_scaleallimages
+	     $opt_imagemaxbytes);
 
 Getopt::Mixed::getOptions ("title=s author=s htmlfile=s mobifile=s gentoc
                             coverimage=s addthumbnail=s noimages addcoverlink
-                            prefixtitle=s fixhtml fixhtmlbr keepbr");
+                            prefixtitle=s fixhtml fixhtmlbr keepbr
+                            removejavascript
+                            scaleallimages=s
+                            imagerescale=s imagemaxbytes=s");
 
 #
 # expand html document with links...
@@ -54,6 +59,27 @@ Getopt::Mixed::getOptions ("title=s author=s htmlfile=s mobifile=s gentoc
 
 
 my @filenames = @ARGV;
+
+if ($#filenames < 0) {
+    print "Usage: html2mobi [options] filename [filename]*\n";
+    print "Options: --title TITLE\n";
+    print "         --author AUTHOR\n";
+    print "         --htmlfile FILENAME\n";
+    print "         --mobifile FILENAME\n";
+    print "         --coverimage FILENAME\n";
+    print "         --addthumbnail FILENAME\n";
+    print "         --prefixtitle PREFIX\n";
+    print "         --gentoc\n";
+    print "         --noimages\n";
+    print "         --addcoverlink\n";
+    print "         --fixhtml\n";
+    print "         --keepbr\n";
+    print "         --removejavascript\n";
+    print "         --scaleallimages factor\n";
+    print "         --imagerescale 0|1\n";
+    print "         --imagemaxbytes n\n";
+    exit 0;
+}
 
 my $tree = 0;
 
@@ -76,7 +102,10 @@ $config->author ("Unspecified Author");
 $config->author ($opt_author) if defined $opt_author;
 $config->title ($opt_title) if defined $opt_title;
 $config->prefix_title ($opt_prefixtitle);
+$config->remove_java_script (1) if defined $opt_removejavascript;
 $config->{KEEPBR} = 1 if defined $opt_keepbr;
+$config->{SCALEALLIMAGES} = $opt_scaleallimages if defined $opt_scaleallimages;
+$config->set_image_max_bytes ($opt_imagemaxbytes) if defined $opt_imagemaxbytes;
 
 my $filename = $filenames[0];
 $mobifile = $filename;
@@ -84,13 +113,16 @@ $mobifile =~ s/\.html/\.mobi/;
 $mobifile =~ s/\.htm/\.mobi/;
 
 if ($#filenames == 0) {
-    $tree = one_html_file ($filename, $linksinfo);
+    $tree = one_html_file ($filename);
 } else {
     if (not defined $opt_title) {
 	$config->title ("dummycollectiontitle")
     }
-    $tree = get_collection ($config, $linksinfo, @filenames);
+    $tree = get_collection ($config, @filenames);
 }
+
+convert_tree ($tree, $linksinfo);
+
 
 if (defined $opt_htmlfile) {
     open HTML, ">$opt_htmlfile" or die "Could not open html file $opt_htmlfile: $!\n";
@@ -108,7 +140,11 @@ if ($mobifile eq $filename) {
     $mobifile .= ".mobi";
 }
 
-MobiPerl::MobiFile::save_mobi_file ($tree, $mobifile, $linksinfo, $config);
+my $rescaleimages = $MobiPerl::Util::rescale_large_images;
+$rescaleimages = $opt_imagerescale if defined $opt_imagerescale;
+
+MobiPerl::MobiFile::save_mobi_file ($tree, $mobifile, $linksinfo, $config, 
+				    $rescaleimages);
 
 #
 # HTML manipulation functions
@@ -117,11 +153,16 @@ MobiPerl::MobiFile::save_mobi_file ($tree, $mobifile, $linksinfo, $config);
 
 sub one_html_file {
     my $filename = shift;
-    my $linksinfo = shift;
     print STDERR "ONEHTMLFILE: $filename\n";
     my $tree = new HTML::TreeBuilder ();
     $tree->ignore_unknown (0);
     $tree->parse_file ($filename) || die "Could not find file: $filename\n";
+    return $tree;
+}
+
+sub convert_tree {
+    my $tree = shift;
+    my $linksinfo = shift;
 
     $linksinfo->check_for_links ($tree);
 
@@ -179,6 +220,10 @@ sub one_html_file {
     }
     
     MobiPerl::Util::fix_pre_tags ($tree);
+
+    if ($config->remove_java_script ()) {
+	MobiPerl::Util::remove_java_script ($tree);
+    }
 
     if (defined $opt_fixhtml) {
 	MobiPerl::Util::fix_html ($tree);
@@ -305,7 +350,6 @@ sub get_toc_tree {
 
 sub get_collection {
     my $config = shift;
-    my $linksinfo = shift;
     my @files = @_;
     my $toctree = get_toc_tree (@filenames);
 #    print $toctree->as_HTML;
@@ -353,7 +397,6 @@ sub get_collection {
     foreach my $file (@files) {
 	print STDERR "ADDING TO COLLECTION: $file\n";
 	my $tree = $file_to_tree{$file};
-	$linksinfo->check_for_links ($tree);
 	my $title = $file_to_title{$file};
 	my $nameref = $file_to_nameref{$file};
 	my $h2 = HTML::Element->new('h2');
@@ -446,6 +489,19 @@ is a book with space between paragraphs.
 
 For a collection of html files generate the table of contents automatically.
 
+=item B<--removejavascript>
+
+Remove Java script code from the html code before saving as a book.
+
+=item B<--scaleallimages factor>
+
+Scale factor to be applied to all images.
+
+=item B<--imagerescale 0|1>
+
+Default is rescaling images for them to work on Cybook Gen3. To
+disable this specify --imagerescale 0.
+
 =back
 
 =head1 EXAMPLES
@@ -465,12 +521,6 @@ For a collection of html files generate the table of contents automatically.
    - News argument (bbc, ....)
 
 =head1 BUGS
-
-   - Images larger than a certain size less than 600x800 does
-     not work on the Gen3. I now resize so that maximum width
-     is 480. But 600x800 gif file did work with the demo Alice
-     mobi file. So there is a bug here somewhere.
-
 
 =head1 AUTHOR
 

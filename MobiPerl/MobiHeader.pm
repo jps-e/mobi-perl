@@ -1,5 +1,22 @@
 use strict;
 
+#    Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    MobiPerl/MobiHeader.pm, Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 
 #
 # This is a patch of a function in Palm::Doc to be able to handle
@@ -92,13 +109,54 @@ use strict;
 # nonbookrecordpointer in Oxford is 0x7167. data5 is 0x7157
 # data3 is 05 in Oxford so maybe this is the version?
 #
+#pdurrant:
+#
+# 0040: nonbookrecordpointer  exttitleoffset exttitlelength language
+# 0050: data1  data2          data3          firstimagerecordpointer
+# 0060: data5
+#
 
 
-my %langmap = ("en-us" => 0x0409,
-	       "sv"    => 0x041d,
+my %langmap = (
+	       "es"    => 0x000a,
+	       "sv"    => 0x001d,
+	       "sv-se" => 0x041d,
+	       "sv-fi" => 0x081d,
 	       "fi"    => 0x000b,
 	       "en"    => 0x0009,
-	       "en-gb" => 0x0809);
+	       "en-au" => 0x0C09,
+	       "en-bz" => 0x2809,
+	       "en-ca" => 0x1009,
+	       "en-cb" => 0x2409,
+	       "en-ie" => 0x1809,
+	       "en-jm" => 0x2009,
+	       "en-nz" => 0x1409,
+	       "en-ph" => 0x3409,
+	       "en-za" => 0x1c09,
+	       "en-tt" => 0x2c09,
+	       "en-us" => 0x0409,
+	       "en-gb" => 0x0809,
+	       "en-zw" => 0x3009,
+	       "da"    => 0x0006,
+	       "da-dk" => 0x0406,
+	       "da"    => 0x0006,
+	       "da"    => 0x0006,
+	       "nl"    => 0x0013,
+	       "nl-be" => 0x0813,
+	       "nl-nl" => 0x0413,
+	       "fi"    => 0x000b,
+	       "fi-fi" => 0x040b,
+	       "fr"    => 0x000c,
+	       "fr-fr" => 0x040c,
+	       "de"    => 0x0007,
+	       "de-at" => 0x0c07,
+	       "de-de" => 0x0407,
+	       "de-lu" => 0x1007,
+	       "de-ch" => 0x0807,
+	       "no"    => 0x0014,
+	       "nb-no" => 0x0414,
+	       "nn-no" => 0x0814,
+);
 
 
 my %mainlanguage = (
@@ -296,6 +354,8 @@ sub new {
 	TITLE => "Unspecified Title",
 	AUTHOR => "Unspecified Author",
 	PUBLISHER => "",
+	DESCRIPTION => "",
+	SUBJECT => "",
 	IMAGERECORDINDEX => 0,
 	LANGUAGE => "en",
 	COVEROFFSET => -1,
@@ -348,6 +408,28 @@ sub get_publisher {
     return $self->{PUBLISHER};
 }
 
+sub set_description {
+    my $self = shift;
+    my $val = shift;
+    $self->{DESCRIPTION} = $val;
+}
+
+sub get_description {
+    my $self = shift;
+    return $self->{DESCRIPTION};
+}
+
+sub set_subject {
+    my $self = shift;
+    my $val = shift;
+    $self->{SUBJECT} = $val;
+}
+
+sub get_subject {
+    my $self = shift;
+    return $self->{SUBJECT};
+}
+
 sub set_language {
     my $self = shift;
     my $val = shift;
@@ -391,6 +473,12 @@ sub get_codepage {
     return $self->{CODEPAGE};
 }
 
+sub set_codepage {
+    my $self = shift;
+    my $value = shift;
+    $self->{CODEPAGE} = $value;
+}
+
 sub set_version {
     my $self = shift;
     my $val = shift;
@@ -429,6 +517,12 @@ sub get_extended_header_data {
     $eh->set ("author", $author);
     my $pub = $self->get_publisher ();
     $eh->set ("publisher", $pub) if $pub;
+
+    my $desc = $self->get_description ();
+    $eh->set ("description", $desc) if $desc;
+
+    my $subj = $self->get_subject ();
+    $eh->set ("subject", $subj) if $subj;
 
     my $coffset = $self->get_cover_offset ();
     if ($coffset >= 0) {
@@ -480,8 +574,12 @@ sub get_data {
     $res .= pack ("NN", 0xFFFFFFFF, 0xFFFFFFFF);
     $res .= pack ("NNNN", 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
     $res .= pack ("NNNN", 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+    my $langnumber = $self->get_language ();
+    if (defined $langmap{$langnumber}) {
+	$langnumber = $langmap{$langnumber};
+    }
     $res .= pack ("NNNN", $vie1, $extended_title_offset, 
-		  $extended_title_length, $langmap{$self->get_language ()});
+		  $extended_title_length, $langnumber);
     $res .= pack ("NNNN", 0xFFFFFFFF, 0xFFFFFFFF, $vie2, $self->get_image_record_index ());
     $res .= pack ("NNNN", 0xFFFFFFFF, 0, 0xFFFFFFFF, 0);
     $res .= pack ("N", $extended_header_flag);
@@ -593,10 +691,6 @@ sub get_language_desc {
 }
 
 
-
-
-
-
 sub set_booktype {
     my $mh = shift;
     my $len = length ($mh);
@@ -605,17 +699,39 @@ sub set_booktype {
     return $mh;
 }
 
+sub set_language_in_header {
+    my $mh = shift;
+    my $len = length ($mh);
+    my $lan = shift;
+
+    my $langnumber = $lan;
+    if (defined $langmap{$langnumber}) {
+	$langnumber = $langmap{$langnumber};
+    }
+
+    substr ($mh, 0x4C, 4, pack ("N", $langnumber));
+    return $mh;
+}
+
+sub add_exth_data {
+    my $h = shift;
+    my $type = shift;
+    my $data = shift;
+    return set_exth_data ($h, $type, $data, 1);
+}
 
 sub set_exth_data {
     my $h = shift;
     my $len = length ($h);
     my $type = shift;
     my $data = shift;
+    my $addflag = shift;
+    my $delexthindex = shift;
     my $res = $h;
     if (defined $data) {
 	print STDERR "Setting extended header data: $type - $data\n";
     } else {
-	print STDERR "Deleting extended header data of type: $type\n";
+	print STDERR "Deleting extended header data of type: $type - $delexthindex\n";
     }
 
     my ($doctype, $length, $htype, $codepage, $uniqueid, $ver) =
@@ -626,6 +742,7 @@ sub set_exth_data {
     my $exth = substr ($h, $length);
     my $prefix = substr ($h, 0, $length);
     my $suffix;
+    my $mobidiff = 0;
     my $eh;
     my $exthlen = 0;
     if ($exthflg & 0x40) {
@@ -637,9 +754,32 @@ sub set_exth_data {
 	$eh = new MobiPerl::EXTH ();
 	$suffix = $exth;
 	substr ($prefix, 0x70, 4, pack ("N", $exthflg | 0x40));
+	# pdurrant: as well as setting the exthflg, we need make sure the version >= 4
+	if ($ver < 4) {
+	    substr($prefix, 0x14, 4, pack("N",4));
+	}
+
+    	# pdurrant: and if the mobi header is short, we need to increase its size
+    	if ($length < 0xE8) {
+	    if ($length < 0x9C) {
+    		#get rid of any old bad data inappropriate for new header
+    		$prefix = substr($prefix, 0, 0x74);
+	    }
+	    $prefix .= substr(pack("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC", 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF), length($prefix)-0xE8);
+	    $mobidiff = 0xE8-$length;
+	    substr ($prefix, 4, 4, pack ("N", 0xE8));
+	}
     }
-    
-    $eh->set ($type, $data);
+
+    if ($addflag) {
+	$eh->add ($type, $data);
+    } else {
+	if (defined $data) {
+	    $eh->set ($type, $data);
+	} else {
+	    $eh->delete ($type, $delexthindex);
+	}
+    }
     print STDERR "GETSTRING: ", $eh->get_string ();
 
     #
@@ -648,17 +788,17 @@ sub set_exth_data {
     
     my $exthdata = $eh->get_data ();
 
-    my $diff = length ($exthdata)-$exthlen;
-    if ($diff <= 0) {
-	foreach ($diff .. -1) {
+    my $exthdiff = length ($exthdata)-$exthlen;
+    if ($exthdiff <= 0) {
+	foreach ($exthdiff .. -1) {
 	    $exthdata .= pack ("C", 0);
-	    $diff++;
+	    $exthdiff++;
 	}
     }
 
     $res = $prefix . $exthdata . $suffix;
 
-    $res = fix_pointers ($res, $length, $diff);
+    $res = fix_pointers ($res, $length, $mobidiff+$exthdiff);
 
     return $res;
 }
@@ -667,20 +807,24 @@ sub set_exth_data {
 sub fix_pointers {
     my $mh = shift;
     my $startblock = shift;
-    my $diff = shift;
+    my $offset = shift;
 
     #
     # Fix pointers to long title and to DRM record
     # 
 
     my ($exttitleoffset) = unpack ("N", substr ($mh, 0x44));
-    if ($exttitleoffset > $startblock and $diff > 0) {
-	substr ($mh, 0x44, 4, pack ("N", $exttitleoffset+$diff));	
+    if ($exttitleoffset > $startblock and $offset > 0) {
+	substr ($mh, 0x44, 4, pack ("N", $exttitleoffset+$offset));	
     }
-    my ($drmoffset) = unpack ("N", substr ($mh, 0x98));
-    if ($drmoffset != 0xFFFFFFFF and
-	$drmoffset > $startblock and $diff > 0) {
-	substr ($mh, 0x98, 4, pack ("N", $drmoffset+$diff));
+    # pdurrant
+    my ($ehlen) = unpack ("N", substr ($mh,0x04));
+    if ($ehlen > 0x98 ) { #pdurrant
+	my ($drmoffset) = unpack ("N", substr ($mh, 0x98));
+	if ($drmoffset != 0xFFFFFFFF and
+	    $drmoffset > $startblock and $offset > 0) {
+	    substr ($mh, 0x98, 4, pack ("N", $drmoffset+$offset));
+	}
     }
     return $mh;
 }

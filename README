@@ -1,3 +1,84 @@
+Changes in 0.0.43
+
+- Added flag "--imagemaxbytes n" to specify the maximum size of image data
+  included in the mobi file to mobi2mobi.
+ 
+Changes in 0.0.42
+
+- Added flag --allowtts to mobi2mobi
+
+- Added flag --deleteclippinglimit to mobi2mobi
+
+- Enhancement and bug fixes in Opf.pm (goto toc now works and it recognize
+  more cover image tags)
+
+- Opf.pm: Removed BOM (byte order mark) from opf file data
+
+- --imagerescale default is now 0 (disabled rescaling)
+
+- Added flag "--imagemaxbytes n" to specify the maximum size of image data
+  included in the mobi file.
+
+Changes in 0.0.41
+
+- Flag --addauthor added.
+
+- Flag --addexthtype added.
+
+- --delexthtype now works to delete for example multiple authors:
+  Usage: "--delexthtype author" or "--delexthtype 100".
+
+- Added flag for updated title: --updatedtitle
+
+- Added flag --delexthindex which can be used to specify that just on
+  EXTH item should be deleted and 1 is the first and 2 the second and so on.
+
+- Changed the licence from GPL3 or later to GPL2 or later.
+
+Changes in 0.0.40
+
+- --removejavascript flag added to html2mobi
+
+- XML::Parser::Lite::Tree have changed tag field to element. Fix for this.
+
+- opf2mobi: Now works with filename containing directory path.
+
+- Fixed bug in html2mobi and collections. Now links should be generated and
+  --gentoc should work.
+
+Changes in 0.0.39
+
+- Bug fixes from pdurrant integrated
+
+- pdurrant: Make thumb 320 high and proportional width latest
+  Mobipocket Creator makes Thumbnails 320 high
+
+- pdurrant: make maxsize 61440
+
+- The list of pdurrant fixes is not complete.
+
+
+
+Changes in 0.0.38
+
+- Added flag --description to mobi2mobi.
+
+- Added flag --language to mobi2mobi.
+
+- Read title from mbp file (not tested...) in mobi2mobi.
+
+- Unpack directory argument is now optional for mobi2html.
+
+- Added print of usage when programs are started without argument.
+
+- --imagerescale flag added to a mobi2mobi and *2mobi programs.
+  Default is rescaling. To not rescale use "--imagerescale 0".
+
+- %langmap in MobiHeader.pm extended but it is still not compleat.
+
+- Added flag --subject to mobi2mobi. Currently only one subject can
+  be set.
+
 Changes in 0.0.37:
 
 - The --publisher flag to mobi2mobi now works correctly.
@@ -11,7 +92,7 @@ Changes in 0.0.37:
   a new image is created and used as cover image.
 
 - Changed so that "--addthumbnail FILENAME" works in the same way as the
-  --cover image flag.
+  --coverimage flag.
 
 Changes in 0.0.36:
 

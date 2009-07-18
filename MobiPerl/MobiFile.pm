@@ -1,5 +1,22 @@
 package MobiPerl::MobiFile;
 
+#    Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    MobiPerl/MobiFile.pm, Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 use Palm::PDB;
 use Palm::Doc;
 
@@ -17,6 +34,11 @@ sub save_mobi_file {
     my $filename = shift;
     my $linksinfo = shift;
     my $config = shift;
+
+    my $rescale = shift;
+
+    my $imrescale = $MobiPerl::Util::rescale_large_images;
+    $imrescale = $rescale if defined $rescale;
 
     my $author = $config->author ();
     my $title = $config->title ();
@@ -92,6 +114,7 @@ sub save_mobi_file {
     $mh->set_author ($author);
     $mh->set_image_record_index ($current_record_index);
 
+##    $mh->set_codepage (65001);
     
     #    $mh->set_cover_offset (0); # It crashes on Kindle if no cover is
 	                            # is available and offset is set to 0
@@ -192,7 +215,9 @@ sub save_mobi_file {
 	    $img->{"categori"} = 0;
 	    $img->{"attributes"}{"Dirty"} = 1;
 	    $img->{"id"} = $current_record_index++;
-	    my $data = MobiPerl::Util::get_image_data ($filename);
+	    my $data = MobiPerl::Util::get_image_data ($filename, 
+						       $imrescale,
+						       $config);
 	    $img->{"data"} = $data;
 	    $mobi->append_Record ($img);
 	}

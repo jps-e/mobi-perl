@@ -1,12 +1,33 @@
 package MobiPerl::Opf;
 
+#    Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    MobiPerl/Opf.pm, Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+use Encode;
+
 use FindBin qw($RealBin);
 use lib "$RealBin";
 
 use strict;
 
 use XML::Parser::Lite::Tree;
+#use File::Spec;
 
+use URI::Escape;
 use MobiPerl::Util;
 ##use Data::Dumper;
 
@@ -24,6 +45,7 @@ sub new {
 	COVERIMAGE => "",
 	SPINEIDS => [],
 	TOCHREF => "",
+	FILENAME => $data,
 	@_
     }, $class;
     $obj->initialize_from_file ($data) if defined $data;
@@ -116,14 +138,49 @@ sub initialize_from_file {
     open OPF, "<$filename" or die "Could not open opf file: $filename\n";
     local $/;
     my $content = <OPF>;
-
+    $content =~ s/^\xef\xbb\xbf//;
+    $content =~ s/><reference/>\n  <reference/g;
+    $content =~ s/<\/reference/<\/reference/g;
+    $content =~ s/><guide/>\n<guide/g;
+    $content =~ s/><\/guide/>\n<\/guide/g;
+    $content =~ s/><metadata/>\n<metadata/g;
+    $content =~ s/><\/metadata/>\n<\/metadata/g;
+    $content =~ s/><dc-metadata/>\n<dc-metadata/g;
+    $content =~ s/><\/dc-metadata/>\n<\/dc-metadata/g;
+    $content =~ s/><x-metadata/>\n<x-metadata/g;
+    $content =~ s/><\/x-metadata/>\n<\/x-metadata/g;
+    $content =~ s/><manifest/>\n<manifest/g;
+    $content =~ s/><\/manifest/>\n<\/manifest/g;
+    $content =~ s/><package/>\n<package/g;
+    $content =~ s/><\/package/>\n<\/package/g;
+    $content =~ s/><dc:Title/>\n<dc:Title/g;
+    $content =~ s/><\/dc:Title/>\n<\/dc:Title/g;
+    $content =~ s/><dc:Language/>\n<dc:Language/g;
+    $content =~ s/><\/dc:Language/>\n<\/dc:Language/g;
+    $content =~ s/><dc:Identifier/>\n<dc:Identifier/g;
+    $content =~ s/><\/dc:Identifier/>\n<\/dc:Identifier/g;
+    $content =~ s/><dc:Creator/>\n<dc:Creator/g;
+    $content =~ s/><\/dc:Creator/>\n<\/dc:Creator/g;
+    $content =~ s/><dc:Subject/>\n<dc:Subject/g;
+    $content =~ s/><\/dc:Subject/>\n<\/dc:Subject/g;
+    $content =~ s/><output/>\n<output/g;
+    $content =~ s/><\/output/>\n<\/output/g;
+    $content =~ s/><item/>\n<item/g;
+    $content =~ s/><\/item/>\n<\/item/g;
+    $content =~ s/><EmbeddedCover/>\n<EmbeddedCover/g;
+    $content =~ s/><\/EmbeddedCover/>\n<\/EmbeddedCover/g;
+    $content =~ s/><spine/>\n<spine/g;
+    $content =~ s/><\/spine/>\n<\/spine/g;
+    $content =~ s/><tours/>\n<tours/g;
+    $content =~ s/><\/tours/>\n<\/tours/g;
+    
     print STDERR "CONTENT: $content\n";
 
     my $tree_parser = XML::Parser::Lite::Tree::instance();
-    my $opf = $tree_parser->parse($content);
+    my $opf = $tree_parser->parse(encode_utf8 $content);
     $self->set_opf ($opf);
 
-#    print STDERR Dumper($opf);
+##    print STDERR Dumper($opf);
 
     my $title = opf_get_title ($opf);
     # global variable $title, bad...
@@ -144,10 +201,15 @@ sub initialize_from_file {
 sub parse_manifest {
     my $self = shift;
     my $opf = shift;
+
+
+#    my ($vol,$dir,$basefile) = File::Spec->splitpath ($self->{FILENAME});
+#    print STDERR "OPFFILE: $vol - $dir - $basefile\n";
+
     my $type = $opf->{"type"};
 #    print STDERR "TYPE: $type - ";
 
-    if ($type eq "tag") {
+    if ($type eq "tag" or $type eq "element") {
 	my $name = $opf->{"name"};
 #	print STDERR "$name\n";
 	if ($name eq "manifest") {
@@ -171,6 +233,7 @@ sub parse_manifest {
 		    #
 
 		    if ($mediatype =~ /image/) {
+			print STDERR "CHECK IF IMAGE: $href\n";
 			if (MobiPerl::Util::is_cover_image ($href)) {
 			    $self->set_cover_image ($href);
 ##			    $coverimage = $href;
@@ -187,7 +250,7 @@ sub parse_manifest {
 	return "";
     }
 	
-    if ($type eq "tag" or $type eq "root") {
+    if ($type eq "tag" or $type eq "root" or $type eq "element") {
 	my $children = $opf->{"children"};
 	foreach my $c (@{$children}) {
 	    $self->parse_manifest ($c);
@@ -202,7 +265,7 @@ sub parse_spine {
     my $type = $opf->{"type"};
 #    print STDERR "TYPE: $type - ";
 
-    if ($type eq "tag") {
+    if ($type eq "tag" or $type eq "element") {
 	my $name = $opf->{"name"};
 #	print STDERR "$name\n";
 	if ($name eq "spine") {
@@ -238,7 +301,7 @@ sub parse_spine {
 	return "";
     }
 
-    if ($type eq "tag" or $type eq "root") {
+    if ($type eq "tag" or $type eq "root" or $type eq "element") {
 	my $children = $opf->{"children"};
 	foreach my $c (@{$children}) {
 	    $self->parse_spine ($c);
@@ -253,7 +316,7 @@ sub parse_guide {
     my $type = $opf->{"type"};
 #    print STDERR "TYPE: $type - ";
 
-    if ($type eq "tag") {
+    if ($type eq "tag" or $type eq "element") {
 	my $name = $opf->{"name"};
 #	print STDERR "$name\n";
 	if ($name eq "guide") {
@@ -264,11 +327,21 @@ sub parse_guide {
 		    my $type = $c->{"attributes"}->{"type"};
 #		    print STDERR "TYPE: $type\n";
 		    if ($type eq "toc") {
-			$self->set_toc_href ($c->{"attributes"}->{"href"});
+			my $escref = $c->{"attributes"}->{"href"};
+			## Remove file part... Should this really be done??
+			$escref = uri_unescape($escref);
+			$escref =~ s/^.*?\#/\#/;
+			$self->set_toc_href ($escref);
 			print STDERR "TOCHREF: ", $self->get_toc_href (), "\n";
+		    }
+		    if ($type eq "other.ms-coverimage") {
+			my $href = $c->{"attributes"}->{"href"};
+			print STDERR "COVERIMAGEHREF: $href\n";
+			$self->set_cover_image ($href);
 		    }
 		    if ($type eq "other.ms-coverimage-standard") {
 			my $href = $c->{"attributes"}->{"href"};
+			print STDERR "COVERIMAGEHREF: $href\n";
 			$self->set_cover_image ($href);
 		    }
 		}
@@ -281,7 +354,7 @@ sub parse_guide {
 	return "";
     }
 
-    if ($type eq "tag" or $type eq "root") {
+    if ($type eq "tag" or $type eq "root" or $type eq "element") {
 	my $children = $opf->{"children"};
 	foreach my $c (@{$children}) {
 	    $self->parse_guide ($c);
@@ -301,9 +374,9 @@ sub opf_get_title {
     my $type = $opf->{"type"};
 #    print STDERR "TYPE: $type - ";
     
-    if ($type eq "tag") {
+    if ($type eq "tag" or $type eq "element") {
 	my $name = $opf->{"name"};
-#	print STDERR "$name\n";
+	print STDERR "$name\n";
 	if ($name eq "dc:Title") {
 	    my $children = $opf->{"children"};
 	    return @{$children}[0]->{"content"};
@@ -318,7 +391,7 @@ sub opf_get_title {
 	print STDERR "$content\n";
     }
 
-    if ($type eq "tag" or $type eq "root") {
+    if ($type eq "tag" or $type eq "root" or $type eq "element") {
 	my $children = $opf->{"children"};
 	foreach my $c (@{$children}) {
 	    my $res = opf_get_title ($c);
@@ -338,7 +411,7 @@ sub opf_get_tag {
     my $type = $opf->{"type"};
 #    print STDERR "TYPE: $type - ";
     
-    if ($type eq "tag") {
+    if ($type eq "tag" or $type eq "element") {
 	my $name = $opf->{"name"};
 ##	print STDERR "$name - $tag\n";
 	if ($name eq $tag) {
@@ -355,7 +428,7 @@ sub opf_get_tag {
 	print STDERR "$content\n";
     }
 
-    if ($type eq "tag" or $type eq "root") {
+    if ($type eq "tag" or $type eq "root" or $type eq "element") {
 	my $children = $opf->{"children"};
 	foreach my $c (@{$children}) {
 	    my $res = opf_get_tag ($c, $tag);

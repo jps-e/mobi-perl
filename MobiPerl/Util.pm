@@ -1,21 +1,40 @@
 package MobiPerl::Util;
 
+#    Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    MobiPerl/Util.pm, Copyright (C) 2007 Tommy Persson, tpe@ida.liu.se
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 use strict;
 
 use GD;
 use Image::BMP;
 use Image::Size;
 use File::Copy;
+use File::Spec;
 
 use HTML::TreeBuilder;
 
-my $rescale_large_images = 1;
+my $rescale_large_images = 0;
 
 
 sub is_cover_image {
     my $file = shift;
     my $res = 0;
-    if (not -e $file) {
+    if (not -e "$file") {
 	die "ERROR: File does not exist: $file";
     }
     my $p = new GD::Image ($file);
@@ -45,6 +64,9 @@ sub get_tree_from_opf {
     my $file = shift;
     my $config = shift;
     my $linksinfo = shift;
+
+#    my ($vol,$dir,$basefile) = File::Spec->splitpath ($file);
+#    print STDERR "OPFFILE: $vol - $dir - $basefile\n";
 
     my $opf = new MobiPerl::Opf ($file);
     my $tochref = $opf->get_toc_href ();
@@ -99,6 +121,7 @@ sub get_tree_from_opf {
     
     my $guide = HTML::Element->new('guide');
     if ($tochref) {
+	print STDERR "Util.pm: GENERATE GUIDE SECTION: $tochref\n";
 	my $tocref = HTML::Element->new('reference', 
 					title=>"Table of Contents",
 					type=>"toc",
@@ -107,6 +130,7 @@ sub get_tree_from_opf {
     }
 
     if ($config->add_cover_link ()) {
+	print STDERR "Util.pm: GENERATE GUIDE SECTION ADDCOVVERLINK\n";
 	my $coverref = HTML::Element->new('reference', 
 					  title=>"Cover",
 					  type=>"cover",
@@ -153,7 +177,7 @@ sub get_tree_from_opf {
 	print STDERR "ADDING TOC FIRST ALSO: $tochref\n";
 	my $tree = new HTML::TreeBuilder ();
 	$tree->ignore_unknown (0);
-	$tree->parse_file ($tochref) || die "Could not find file: $tochref\n";
+	$tree->parse_file ($tochref) || die "1-Could not find file: $tochref\n";
 ###	check_for_links ($tree);
 	$linksinfo->check_for_links ($tree);
 	my $b = $tree->find ("body");
@@ -177,7 +201,7 @@ sub get_tree_from_opf {
 	my $tree = new HTML::TreeBuilder ();
 	$tree->ignore_unknown (0);
 
-	open FILE, "<$filename" or die "Could not find file: $filename\n";
+	open FILE, "<$filename" or die "2-Could not find file: $filename\n";
 	{
 	    local $/;
 	    my $content = <FILE>;
@@ -361,8 +385,15 @@ sub get_thumb_cover_image_data {
 #    my $x = $p->width;
 #    my $y = $p->height;
 ##    add_text_to_image ($p, $opt_covertext);
-    my $scaled = scale_gd_image ($p, 180, 240);
-    print STDERR "Resizing image $x x $y -> 180 x 240 -> scaled.jpg\n";
+
+# pdurrant
+# Make thumb 320 high and proportional width
+# latest Mobipocket Creator makes Thumbnails 320 high
+    my $scaled = scale_gd_image ($p, 320/$y);
+    print STDERR "Resizing image $x x $y -> $x*320/$y x 320 -> scaled.jpg\n";
+
+#    my $scaled = scale_gd_image ($p, 180, 240);
+#    print STDERR "Resizing image $x x $y -> 180 x 240 -> scaled.jpg\n";
     return $scaled->jpeg ();
 }
 
@@ -451,10 +482,21 @@ sub add_text_to_image {
 sub get_image_data {
     my $filename = shift;
     my $rescale = shift;
+    my $config = shift;
 
     $rescale_large_images = $rescale if defined $rescale;
 
-    my $maxsize = 61000;
+    my $scale_factor;
+    $scale_factor = $config->scale_all_images() if defined $config;
+
+    # pdurrant
+    # make maxsize exactly 60KiB
+
+    my $maxsize = 61440;
+    $maxsize = $config->get_image_max_bytes () if defined $config;
+    print STDERR "GET IMAGE DATA (file - maxsize): $filename - $maxsize\n";
+
+#    my $maxsize = 61000;
     my $maxwidth = 480;
     my $maxheight = 640;
 
@@ -470,8 +512,17 @@ sub get_image_data {
 
     print STDERR "Reading data from file: $filename - $x x $y - $type\n";
 
-    if ($filesize < $maxsize and $x < $maxwidth and $y<$maxheight
-	and $type ne "PNG") {
+#    if ($filesize < $maxsize and $x < $maxwidth and $y<$maxheight
+#	and $type ne "PNG") {
+
+    # pdurrant
+    # do not resize large images if the filesize is OK, 
+    # even if pixel dimensions are large
+    if ($filesize < $maxsize and 
+	((not $rescale_large_images) || ($x <= $maxwidth and $y <= $maxheight))
+	and $type ne "PNG"
+	and (not defined $scale_factor or $scale_factor == 1.0)) {
+	
 	# No transformation has to be done, keep data as is
 	print STDERR "No transformation: $filename - $x x $y\n";
 	open(IMG, $filename) or die "can't open $filename: $!";
@@ -507,7 +558,7 @@ sub get_image_data {
 ##	print IMAGE $p->jpeg ();
 ##	close IMAGE;
     }
-    my ($x, $y) = $p->getBounds();
+    ($x, $y) = $p->getBounds(); # reuse of $x and $y...
 #    my $x = $p->width;
 #    my $y = $p->height;
 
@@ -517,6 +568,15 @@ sub get_image_data {
     # check this one more time, 600x800 gif and jpeg with size
     # less than 64K does not work on Gen3
     #
+    # pdurrant
+    # as of July 2008, 
+    # 600x800 with size less than 61440 does work on Gen3
+    # so must use the --imagerescale argument to get 600x800.
+
+    if (defined $scale_factor and $scale_factor != 1.0) {
+	print STDERR "SCALE IMAGE: $scale_factor\n";
+	$p = MobiPerl::Util::scale_gd_image ($p, $scale_factor);
+    }
 
     if ($rescale_large_images) {
 	my $xdiff = $x-$maxwidth;
@@ -563,7 +623,7 @@ sub get_image_data {
 ##    }
 
 
-    my $data = MobiPerl::Util::get_gd_image_data ($p, $filename, $quality);
+    $data = MobiPerl::Util::get_gd_image_data ($p, $filename, $quality);
     return $data;
 }
 
@@ -704,6 +764,19 @@ sub fix_pre_tags {
 	$pre->replace_with ($p);
     }
 
+}
+
+sub remove_java_script {
+    my $tree = shift;
+
+    print STDERR "REMOVE SCRIPT CODE\n";
+
+    my @scripts = $tree->find ("script");
+
+    foreach my $script (@scripts) {
+	print STDERR "REMOVING SCRIPT NODE: $script\n";
+	$script->detach ();
+    }
 }
 
 

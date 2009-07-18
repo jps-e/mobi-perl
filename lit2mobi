@@ -6,7 +6,7 @@
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
+#    the Free Software Foundation, either version 2 of the License, or
 #    (at your option) any later version.
 #
 #    This program is distributed in the hope that it will be useful,
@@ -33,12 +33,12 @@ use File::Copy;
 use vars qw ($opt_title $opt_author $opt_htmlfile $opt_mobifile
 	     $opt_coverimage $opt_addthumbnail $opt_noimages
 	     $opt_tocfirst $opt_addcoverlink
-	     $opt_prefixtitle $opt_fixhtml $opt_fixhtmlbr);
+	     $opt_prefixtitle $opt_fixhtml $opt_fixhtmlbr $opt_imagerescale);
 
 Getopt::Mixed::getOptions ("title=s author=s htmlfile=s mobifile=s
                             coverimage=s addthumbnail=s 
                             noimages tocfirst addcoverlink
-                            prefixtitle=s fixhtml fixhtmlbr");
+                            prefixtitle=s fixhtml fixhtmlbr imagerescale=s");
 
 
 
@@ -50,6 +50,24 @@ Getopt::Mixed::getOptions ("title=s author=s htmlfile=s mobifile=s
 
 
 my $filename = shift;
+
+if (not $filename) {
+    print "Usage: lit2mobi [options] filename\n";
+    print "Options: --title TITLE\n";
+    print "         --author AUTHOR\n";
+    print "         --htmlfile FILENAME\n";
+    print "         --mobifile FILENAME\n";
+    print "         --coverimage FILENAME\n";
+    print "         --addthumbnail FILENAME\n";
+    print "         --prefixtitle PREFIX\n";
+    print "         --noimages\n";
+    print "         --tocfirst\n";
+    print "         --addcoverlink\n";
+    print "         --fixhtml\n";
+    print "         --keepbr\n";
+    print "         --imagerescale 0|1\n";
+    exit 0;
+}
 
 if (not $filename =~ /\.lit$/) {
     die "File $filename has wrong extension\n";
@@ -77,6 +95,8 @@ if ($mobifile eq $filename) {
     $mobifile .= ".mobi";
 }
 
+my $rescaleimages = $MobiPerl::Util::rescale_large_images;
+$rescaleimages = $opt_imagerescale if defined $opt_imagerescale;
 
 $opffile =~ s/\.lit/.opf/;
 
@@ -102,7 +122,8 @@ if (defined $opt_htmlfile) {
     move ($opt_htmlfile, "../");
 }
 
-MobiPerl::MobiFile::save_mobi_file ($tree, $mobifile, $linksinfo, $config);
+MobiPerl::MobiFile::save_mobi_file ($tree, $mobifile, $linksinfo, $config,
+				    $rescaleimages);
 
 move ($mobifile, "../");
 
@@ -170,6 +191,11 @@ Saves the html that is packed into mobi format. This html code contains
 Mobipocket specific things that are added automatically. This is mostly
 useful for debugging.
 
+=item B<--imagerescale 0|1>
+
+Default is rescaling images for them to work on Cybook Gen3. To
+disable this specify --imagerescale 0.
+
 =back
 
 =head1 EXAMPLES
@@ -183,11 +209,6 @@ useful for debugging.
    - Extract language information from opf file
 
 =head1 BUGS
-
-   - Images larger than a certain size less than 600x800 does
-     not work on the Gen3. I now resize so that maximum width
-     is 480. But 600x800 gif file did work with the demo Alice
-     mobi file. So there is a bug here somewhere.
 
 
 =head1 AUTHOR
