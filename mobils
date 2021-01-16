@@ -31,9 +31,9 @@ use MobiPerl::Util;
 
 use strict;
 
-use vars qw ($opt_R);
+use vars qw ($opt_R $opt_d);
 
-Getopt::Mixed::getOptions ("R");
+Getopt::Mixed::getOptions ("R", "d");
 
 my $author = "";
 my $publisher = "";
@@ -42,7 +42,7 @@ my $type = ""; # Type of the book
 my $creator = ""; # Creator of the book
 
 my $debug = 0;
-
+$debug = 1 if defined $opt_d;
 
 if ($#ARGV < 0) { # No arguments, ls all files in directory
     lsdir (".");
