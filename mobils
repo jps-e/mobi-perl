@@ -276,6 +276,9 @@ filename.
 
 Like the -R flag to ls. Recursicely list MobiPocket files.
 
+=item B<-d>
+
+Enable debug prints
 
 
 =back
