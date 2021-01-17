@@ -71,7 +71,8 @@ sub lsdir {
 	    }
 	}
 	if (-f $name) {
-	    if ($name =~ /\.mobi$/i or $name =~ /\.prc$/i) {
+	    if ($name =~ /\.mobi$/i or $name =~ /\.prc$/i or
+                $name =~ /\.azw3$/i or $name =~ /\.azw$/i) {
 		lsfile ($name);
 	    }
 	}
@@ -86,7 +87,8 @@ sub lsfile {
     my $filename = shift;
 #    print STDERR "lsfile: $filename\n";
     if (not -f $filename or 
-	not ($filename =~ /\.mobi$/i or $filename =~ /\.prc$/i)) {
+	not ($filename =~ /\.mobi$/i or $filename =~ /\.prc$/i or
+             $filename =~ /\.azw3$/i or $filename =~ /\.azw$/i)) {
 	return;
     }
     $author = "NOAUTHOR";
