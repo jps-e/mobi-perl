@@ -1,3 +1,13 @@
+Changes in 0.0.44
+
+- Added automatic processing of azw and azw3 files in mobils when no
+  filename has been supplied.
+
+- Added flag -d to mobils to enable debug prints
+
+- Added files License.txt and gpl-2.0.txt to reflect the change in
+  license from GPL3 or later to GPL2 or later in 0.0.41
+
 Changes in 0.0.43
 
 - Added flag "--imagemaxbytes n" to specify the maximum size of image data
@@ -33,7 +43,7 @@ Changes in 0.0.41
 - Added flag --delexthindex which can be used to specify that just on
   EXTH item should be deleted and 1 is the first and 2 the second and so on.
 
-- Changed the licence from GPL3 or later to GPL2 or later.
+- Changed the license from GPL3 or later to GPL2 or later.
 
 Changes in 0.0.40
 
